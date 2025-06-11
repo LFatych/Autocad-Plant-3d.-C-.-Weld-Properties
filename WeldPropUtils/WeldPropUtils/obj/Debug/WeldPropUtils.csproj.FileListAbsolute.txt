@@ -1,0 +1,6 @@
+C:\Users\lfaty\Desktop\_API Projects\_Lessons\WeldPropUtils\WeldPropUtils\bin\Debug\WeldPropUtils.dll
+C:\Users\lfaty\Desktop\_API Projects\_Lessons\WeldPropUtils\WeldPropUtils\bin\Debug\WeldPropUtils.pdb
+C:\Users\lfaty\Desktop\_API Projects\_Lessons\WeldPropUtils\WeldPropUtils\obj\Debug\WeldPropUtils.csproj.AssemblyReference.cache
+C:\Users\lfaty\Desktop\_API Projects\_Lessons\WeldPropUtils\WeldPropUtils\obj\Debug\WeldPropUtils.csproj.CoreCompileInputs.cache
+C:\Users\lfaty\Desktop\_API Projects\_Lessons\WeldPropUtils\WeldPropUtils\obj\Debug\WeldPropUtils.dll
+C:\Users\lfaty\Desktop\_API Projects\_Lessons\WeldPropUtils\WeldPropUtils\obj\Debug\WeldPropUtils.pdb
