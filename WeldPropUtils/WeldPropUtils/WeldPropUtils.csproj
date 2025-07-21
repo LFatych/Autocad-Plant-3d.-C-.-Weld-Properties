@@ -32,35 +32,35 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="AcCoreMgd">
-      <HintPath>..\..\..\..\..\..\..\Autodesk\ObjectARX_for_AutoCAD_2024_Win_64bit_dlm\inc\AcCoreMgd.dll</HintPath>
+      <HintPath>$(AP3D_SDK_2024)\inc\AcCoreMgd.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="AcDbMgd">
-      <HintPath>..\..\..\..\..\..\..\Autodesk\ObjectARX_for_AutoCAD_2024_Win_64bit_dlm\inc\AcDbMgd.dll</HintPath>
+      <HintPath>$(AP3D_SDK_2024)\inc\AcDbMgd.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="AcMgd">
-      <HintPath>..\..\..\..\..\..\..\Autodesk\ObjectARX_for_AutoCAD_2024_Win_64bit_dlm\inc\AcMgd.dll</HintPath>
+      <HintPath>$(AP3D_SDK_2024)\inc\AcMgd.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="PnP3dObjectsMgd">
-      <HintPath>..\..\..\..\..\..\..\Autodesk\AutoCAD_Plant_3D_2024_SDK_English_Win_64bit_dlm\inc-x64\PnP3dObjectsMgd.dll</HintPath>
+      <HintPath>$(AP3D_SDK_2024)\inc-x64\PnP3dObjectsMgd.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="PnP3dProjectPartsMgd">
-      <HintPath>..\..\..\..\..\..\..\Autodesk\AutoCAD_Plant_3D_2024_SDK_English_Win_64bit_dlm\inc-x64\PnP3dProjectPartsMgd.dll</HintPath>
+      <HintPath>$(AP3D_SDK_2024)\inc-x64\PnP3dProjectPartsMgd.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="PnPDataLinks">
-      <HintPath>..\..\..\..\..\..\..\Autodesk\AutoCAD_Plant_3D_2024_SDK_English_Win_64bit_dlm\inc-x64\PnPDataLinks.dll</HintPath>
+      <HintPath>$(AP3D_SDK_2024)\inc-x64\PnPDataLinks.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="PnPDataObjects">
-      <HintPath>..\..\..\..\..\..\..\Autodesk\AutoCAD_Plant_3D_2024_SDK_English_Win_64bit_dlm\inc-x64\PnPDataObjects.dll</HintPath>
+      <HintPath>$(AP3D_SDK_2024)\inc-x64\PnPDataObjects.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="PnPProjectManagerMgd">
-      <HintPath>..\..\..\..\..\..\..\Autodesk\AutoCAD_Plant_3D_2024_SDK_English_Win_64bit_dlm\inc-x64\PnPProjectManagerMgd.dll</HintPath>
+      <HintPath>$(AP3D_SDK_2024)\inc-x64\PnPProjectManagerMgd.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="System" />
