@@ -1,25 +1,21 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-//autocad namespaces
+﻿//autocad namespaces
 using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
-
+using Autodesk.ProcessPower.DataLinks;
 //Plant3d namespaces
 using Autodesk.ProcessPower.DataObjects;
-using Autodesk.ProcessPower.DataLinks;
 using Autodesk.ProcessPower.P3dProjectParts;
 using Autodesk.ProcessPower.PlantInstance;
 using Autodesk.ProcessPower.PnP3dObjects;
 using Autodesk.ProcessPower.ProjectManager;
-using portCol = Autodesk.ProcessPower.PnP3dObjects.PortCollection;
-using pPort = Autodesk.ProcessPower.PnP3dObjects.Port;
-using pPart = Autodesk.ProcessPower.PnP3dObjects.Part;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Windows.Forms;
+using portCol = Autodesk.ProcessPower.PnP3dObjects.PortCollection;
+using pPart = Autodesk.ProcessPower.PnP3dObjects.Part;
+using pPort = Autodesk.ProcessPower.PnP3dObjects.Port;
 
 namespace WeldPropUtils
 {
@@ -35,14 +31,14 @@ namespace WeldPropUtils
 
     public static class MiscUtilities
     {
-        public static Dictionary<string,string> GetP3dProps (this int rowId)
+        public static Dictionary<string, string> GetP3dProps(this int rowId)
         {
-            Dictionary<string,string> propsDict = new Dictionary<string,string> ();
+            Dictionary<string, string> propsDict = new Dictionary<string, string>();
 
             try
             {
                 List<KeyValuePair<string, string>> props = Acad.dlm.GetAllProperties(rowId, true);
-                foreach(KeyValuePair<string, string> prop in props)
+                foreach (KeyValuePair<string, string> prop in props)
                 {
                     if (!string.IsNullOrEmpty(prop.Key) && !string.IsNullOrEmpty(prop.Value))
                     {
@@ -50,13 +46,13 @@ namespace WeldPropUtils
                     }
                 }
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 MessageBox.Show(ex.Message);
             }
             return propsDict;
         }
-        
+
         public static bool IsWeld(this Dictionary<string, string> props)
         {
             return props.TryGetValue("JointType", out string jointType) &&
@@ -66,9 +62,9 @@ namespace WeldPropUtils
 
         public static bool ArePortsEqual(structPort port1, structPort port2)
         {
-            return port1.OD==port2.OD &&
-                port1.WallThickness==port2.WallThickness &&
-                port1.Material==port2.Material;
+            return port1.OD == port2.OD &&
+                port1.WallThickness == port2.WallThickness &&
+                port1.Material == port2.Material;
         }
 
         public static Weld AsWeld(this Connector conn, Transaction tr)
@@ -78,15 +74,15 @@ namespace WeldPropUtils
             portCol ports = conn.GetPorts(PortType.Both);
             Weld weld = new Weld("", conn.FindWeldRowId(), "", new structPort(), new structPort());
             int portIndex = 1;
-            
-            foreach(pPort port in ports)
+
+            foreach (pPort port in ports)
             {
                 if (connMgr.IsConnected(new Pair { ObjectId = conn.ObjectId, Port = port }))
                 {
                     pPart connPart = conn.GetConnPart(tr, port);
                     if (connPart != null)
                     {
-                        var portProps = port.GetPortProps(tr,connPart);
+                        var portProps = port.GetPortProps(tr, connPart);
                         weld.PortPropCollect(portIndex, portProps);
                     }
                 }
@@ -96,14 +92,14 @@ namespace WeldPropUtils
             return weld;
         }
 
-        private static structPort GetPortProps(this pPort port,Transaction tr,  pPart connPart)
+        private static structPort GetPortProps(this pPort port, Transaction tr, pPart connPart)
         {
             int connPartRowID = Acad.dlm.FindAcPpRowId(connPart.ObjectId);
-            Dictionary<string,string> connPartProps = connPartRowID.GetP3dProps();
+            Dictionary<string, string> connPartProps = connPartRowID.GetP3dProps();
             string portName = null;
-            foreach(pPort p in connPart.GetPorts(PortType.Both))
+            foreach (pPort p in connPart.GetPorts(PortType.Both))
             {
-                if(p.Position == port.Position)
+                if (p.Position == port.Position)
                 {
                     portName = p.Name;
                     break;
@@ -113,15 +109,15 @@ namespace WeldPropUtils
             //if the pipe is connected to nozzle of the equipment, we will retrieve properties of equipment
             //insteaad of nozzle. That is why we need to dig into equipment and find our nozzle
             //actually connectors usually have name S1, S2, but for nozzles it is longer, so we could use it
-            if(portName?.Length > 2)
+            if (portName?.Length > 2)
             {
                 Equipment eqp = tr.GetObject(connPart.ObjectId, OpenMode.ForRead) as Equipment;
                 NozzleSubPartCollection nozzleCol = eqp.AllSubParts;
-                foreach(NozzleSubPart n  in nozzleCol)
+                foreach (NozzleSubPart n in nozzleCol)
                 {
-                    int nId = Acad.dlm.FindAcPpRowId(Acad.dlm.MakeAcPpObjectId(connPart.ObjectId,1));
-                    Dictionary<string,string> nozzleProps = nId.GetP3dProps();
-                    if(nozzleProps.FirstOrDefault(p => p.Key == "PortName").Value == portName)
+                    int nId = Acad.dlm.FindAcPpRowId(Acad.dlm.MakeAcPpObjectId(connPart.ObjectId, 1));
+                    Dictionary<string, string> nozzleProps = nId.GetP3dProps();
+                    if (nozzleProps.FirstOrDefault(p => p.Key == "PortName").Value == portName)
                     {
                         connPartProps = nozzleProps;
                         break;
@@ -144,10 +140,10 @@ namespace WeldPropUtils
             while (!connIter.Done())
             {
                 ObjectId connectedPartdId = connIter.ObjectId;
-                if(connectedPartdId != ObjectId.Null)
+                if (connectedPartdId != ObjectId.Null)
                 {
                     pPart connPart = tr.GetObject(connectedPartdId, OpenMode.ForRead) as pPart;
-                    if(connPart != null && !(connPart is Connector))
+                    if (connPart != null && !(connPart is Connector))
                     {
                         return connPart;
                     }
@@ -161,7 +157,7 @@ namespace WeldPropUtils
         {
             SubPartCollection subPartCol = conn.AllSubParts;
 
-            foreach(SubPart subPart in subPartCol)
+            foreach (SubPart subPart in subPartCol)
             {
                 if (subPart is WeldSubPart)
                     return Acad.dlm.FindAcPpRowId(Acad.dlm.MakeAcPpObjectId(conn.ObjectId, 1));
@@ -179,25 +175,25 @@ namespace WeldPropUtils
                 .ThenByDescending(w => w.Port2.Material);
             //monitor when sorted welds change their properties
             Weld tempWeld = sortedWeld.FirstOrDefault();
-            foreach(Weld weld in sortedWeld)
+            foreach (Weld weld in sortedWeld)
             {
                 PnPRow partRow = Acad.dlm.GetPnPDatabase().GetRow(weld.WeldId);
-                if(!ArePortsEqual(tempWeld.Port1,weld.Port1) || !ArePortsEqual(tempWeld.Port2, weld.Port2))
+                if (!ArePortsEqual(tempWeld.Port1, weld.Port1) || !ArePortsEqual(tempWeld.Port2, weld.Port2))
                 {
                     tempWeld = weld;
                     weldNum++;
                     weld.WeldNumber = weldNum.ToString();
-                    
+
                 }
                 else
                 {
                     weld.WeldNumber = weldNum.ToString();
                 }
                 partRow.BeginEdit();
-                partRow["WeldNumber"]=weld.WeldNumber;
+                partRow["WeldNumber"] = weld.WeldNumber;
                 partRow.EndEdit();
             }
-           
+
         }
     }
 }
