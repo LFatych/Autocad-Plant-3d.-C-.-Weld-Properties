@@ -81,7 +81,7 @@ PLANT_REF_2027=$SCRATCH/sdk2027/ref PLANT_REF_2026=$SCRATCH/sdk2026/ref TMPDIR=$
   Not covered: runtime-only problems (a `StaticResource` key that doesn't exist, a wrong pack URI, binding paths).
 - Any `error` fails the check. Fix it before committing.
 - A new `warning CS…` in code you touched counts as a finding: fix it or explain it.
-- The known baseline warning is `CS0642` in `WeldPropertiesHandler.cs` (the `using (DocumentLock …) ;` bug), until that bug is fixed.
+- There are no baseline warnings (the old `CS0642` was fixed). Any warning is new.
 - New `.cs` and `.xaml` files are picked up automatically (SDK-style project; `*.xaml` → `Page`).
 
 ## 4. Report

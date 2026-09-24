@@ -12,43 +12,37 @@ using Autodesk.ProcessPower.ProjectManager;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Windows.Forms;
 using portCol = Autodesk.ProcessPower.PnP3dObjects.PortCollection;
 using pPart = Autodesk.ProcessPower.PnP3dObjects.Part;
 using pPort = Autodesk.ProcessPower.PnP3dObjects.Port;
 
 namespace WeldPropUtils
 {
+    // The active drawing and project, resolved on every use (never cached: the user can switch drawings or projects).
     public static class Acad
     {
-        public static Document doc = Autodesk.AutoCAD.ApplicationServices.Application.DocumentManager.MdiActiveDocument;
-        public static Database db = doc.Database;
-        public static Editor ed = doc.Editor;
-        public static PlantProject currProj = PlantApplication.CurrentProject;
-        public static PipingProject pipeProj = currProj.ProjectParts["Piping"] as PipingProject;
-        public static DataLinksManager dlm = pipeProj.DataLinksManager;
+        public static Document doc => Autodesk.AutoCAD.ApplicationServices.Application.DocumentManager.MdiActiveDocument;
+        public static Database db => doc.Database;
+        public static Editor ed => doc.Editor;
+        public static PlantProject currProj => PlantApplication.CurrentProject;
+        public static PipingProject pipeProj => currProj.ProjectParts["Piping"] as PipingProject;
+        public static DataLinksManager dlm => pipeProj.DataLinksManager;
     }
 
     public static class MiscUtilities
     {
+        // Non-empty properties of a project row. Throws on failure; WeldPropertiesHandler.ProcessWelds skips that weld
+        // and reports all failures once (no MessageBox per failure).
         public static Dictionary<string, string> GetP3dProps(this int rowId)
         {
             Dictionary<string, string> propsDict = new Dictionary<string, string>();
-
-            try
+            List<KeyValuePair<string, string>> props = Acad.dlm.GetAllProperties(rowId, true);
+            foreach (KeyValuePair<string, string> prop in props)
             {
-                List<KeyValuePair<string, string>> props = Acad.dlm.GetAllProperties(rowId, true);
-                foreach (KeyValuePair<string, string> prop in props)
+                if (!string.IsNullOrEmpty(prop.Key) && !string.IsNullOrEmpty(prop.Value))
                 {
-                    if (!string.IsNullOrEmpty(prop.Key) && !string.IsNullOrEmpty(prop.Value))
-                    {
-                        propsDict[prop.Key] = prop.Value;
-                    }
+                    propsDict[prop.Key] = prop.Value;
                 }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(ex.Message);
             }
             return propsDict;
         }

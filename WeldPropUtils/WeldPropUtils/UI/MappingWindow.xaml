@@ -266,6 +266,9 @@
                         Style="{StaticResource Spds.Button.Chrome}" Margin="8,0,0,0" />
                 <Button DockPanel.Dock="Right" Content="Cancel" Command="{Binding CancelCommand}" IsCancel="True"
                         Style="{StaticResource Spds.Button.Chrome}" />
+                <CheckBox DockPanel.Dock="Left" Content="Update new welds automatically" IsChecked="{Binding AutoUpdate}"
+                          Foreground="{DynamicResource Spds.ChromeText}" VerticalAlignment="Center" Margin="0,0,20,0"
+                          ToolTip="When a command creates welds (routing, placing fittings…), fill their mapped properties once the command ends. Project setting; also WeldPropAuto." />
                 <TextBlock Text="{Binding HintText}" FontSize="12" VerticalAlignment="Center"
                            Foreground="{DynamicResource Spds.ChromeMuted}" TextTrimming="CharacterEllipsis" />
             </DockPanel>

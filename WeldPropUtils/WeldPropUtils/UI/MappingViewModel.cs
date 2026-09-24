@@ -98,6 +98,13 @@ namespace WeldPropUtils.UI
             }
         }
 
+        // Project setting "autoUpdate": new welds get their properties automatically (saved with Save).
+        public bool AutoUpdate
+        {
+            get => _settings.AutoUpdate;
+            set { _settings.AutoUpdate = value; OnPropertyChanged(); }
+        }
+
         // Some rows name a weld property that the weld classes in Project Setup don't have.
         public bool HasMissing
         {

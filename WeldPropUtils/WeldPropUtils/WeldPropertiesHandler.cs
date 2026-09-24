@@ -35,35 +35,52 @@ namespace WeldPropUtils
                 Acad.ed.WriteMessage("\nNo connectors found.");
                 return;
             }
-            ObjectId[] objIds = selRes.Value.GetObjectIds();
-            List<Weld> welds = new List<Weld>();
+            ProcessWelds(selRes.Value.GetObjectIds(), SetProp, WeldNumAssign);
+        }
 
-            using (DocumentLock docLock = Acad.doc.LockDocument()) ;
+        // Runs SetProp for every weld (Buttweld/Tap/Socketweld connector) among 'objIds' of the active drawing, then
+        // WeldNumAssign with all of them. A connector that fails (e.g. not linked to the project) is skipped and counted.
+        // The caller must hold the document lock (a Modal command has it; WeldAutoUpdate locks explicitly).
+        // Returns the number of welds processed.
+        internal static int ProcessWelds(
+            IEnumerable<ObjectId> objIds, Action<Connector, Weld> SetProp = null, Action<List<Weld>> WeldNumAssign = null)
+        {
+            List<Weld> welds = new List<Weld>();
+            int failed = 0;
+            string firstError = null;
+
             using (Transaction tr = Acad.db.TransactionManager.StartTransaction())
             {
                 foreach (ObjectId objId in objIds)
                 {
-                    Connector connector = tr.GetObject(objId, OpenMode.ForRead) as Connector;
-                    if (connector is null) continue;
-                    Dictionary<string, string> connectorProps = Acad.dlm.FindAcPpRowId(connector.ObjectId).GetP3dProps();
-                    if (!connectorProps.IsWeld()) continue;
-
-                    Weld weld = connector.AsWeld(tr);
-                    SetProp?.Invoke(connector, weld);
-                    if (WeldNumAssign != null)
+                    try
                     {
+                        Connector connector = tr.GetObject(objId, OpenMode.ForRead) as Connector;
+                        if (connector is null) continue;
+                        Dictionary<string, string> connectorProps = Acad.dlm.FindAcPpRowId(connector.ObjectId).GetP3dProps();
+                        if (!connectorProps.IsWeld()) continue;
+
+                        Weld weld = connector.AsWeld(tr);
+                        SetProp?.Invoke(connector, weld);
                         weld.WeldType = connectorProps["JointType"];
                         welds.Add(weld);
+                    }
+                    catch (System.Exception ex)
+                    {
+                        failed++;
+                        if (firstError == null) firstError = ex.Message;
                     }
                 }
                 WeldNumAssign?.Invoke(welds);
                 tr.Commit();
             }
-
+            if (failed > 0)
+                Acad.ed.WriteMessage("\n" + failed + " connector(s) skipped because of errors (first: " + firstError + ").");
+            return welds.Count;
         }
 
         // Writes each mapped weld property from the connected part on its side; a property missing on the part is written as null.
-        private static void SetWeldProp(Connector conn, Weld weld, MappingProfile profile)
+        internal static void SetWeldProp(Connector conn, Weld weld, MappingProfile profile)
         {
             StringCollection pNames = new StringCollection();
             StringCollection pVals = new StringCollection();
@@ -82,7 +99,7 @@ namespace WeldPropUtils
 
         // The profile without mappings to weld properties that the weld classes in Project Setup don't have
         // (writing one of those would fail for every weld). Skipped targets are reported once.
-        private static MappingProfile WritableProfile(MappingProfile profile)
+        internal static MappingProfile WritableProfile(MappingProfile profile)
         {
             HashSet<string> weldProps;
             try
@@ -177,6 +194,29 @@ namespace WeldPropUtils
             {
                 return true;
             }
+        }
+
+        // Switches "autoUpdate" of the project settings: new welds get their mapped properties when the command that
+        // created them ends (see WeldAutoUpdate).
+        [CommandMethod ("WeldPropAuto")]
+        public static void ToggleAutoUpdate()
+        {
+            WeldPropSettings settings = LoadSettings();
+            if (settings == null) return;
+            string path = SettingsStore.GetSettingsPath();
+            settings.AutoUpdate = !settings.AutoUpdate;
+            try
+            {
+                SettingsStore.Save(settings, path);
+            }
+            catch (System.Exception ex)
+            {
+                Acad.ed.WriteMessage("\nCould not save " + path + ": " + ex.Message);
+                return;
+            }
+            Acad.ed.WriteMessage(settings.AutoUpdate
+                ? "\nWeld auto-update is ON for this project: new welds get their properties (profile \"" + settings.GetActiveProfile().Name + "\")."
+                : "\nWeld auto-update is OFF for this project. Use SetWeldProp to update welds.");
         }
 
         [CommandMethod ("SetWeldProp")]

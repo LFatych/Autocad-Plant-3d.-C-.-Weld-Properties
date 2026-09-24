@@ -68,6 +68,15 @@ Use `GetSelection` or `SelectImplied` instead of `SelectAll` to let the user wor
 - Deployment: an autoloader `.bundle` in `%ProgramData%\Autodesk\ApplicationPlugins\` with `PackageContents.xml`
   (`RuntimeRequirements OS="Win64" Platform="PLNT3D" SeriesMin="R25.1" SeriesMax="R25.1"`; verify on a real install).
 - `IExtensionApplication.Initialize()` runs when the DLL loads. Keep it light, because there may be no document or project yet.
+  This repo: `PluginApp` (assembly attribute `ExtensionApplication`) starts `WeldAutoUpdate`.
+
+## Events without slowing AutoCAD (pattern used by WeldAutoUpdate)
+- Per-object events (`Database.ObjectAppended/ObjectModified`) fire for *every* object: only type-check and remember
+  the ObjectId there. Never open transactions, read the project database or write properties inside them.
+- Do the work after the command: `Document.CommandEnded` (+ `CommandCancelled`/`CommandFailed`) attaches an
+  `Application.Idle` handler; in Idle wait for `doc.Editor.IsQuiescent`, `LockDocument()`, process, then detach Idle.
+- Re-entrancy guard (a `_busy` flag) so your own writes don't queue work; skip `U/UNDO/REDO/MREDO`.
+- Hook every document: existing ones plus `DocumentManager.DocumentCreated`; unhook on `DocumentToBeDestroyed`.
 
 ## Culture
 Number parsing has to work on any Windows locale (many use `,` as the decimal separator):

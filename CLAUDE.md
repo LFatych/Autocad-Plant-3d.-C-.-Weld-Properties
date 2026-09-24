@@ -12,8 +12,9 @@ No multi-targeting in one build (user decision: one version at a time).
 ```
 WeldPropUtils/WeldPropUtils.sln
 WeldPropUtils/WeldPropUtils/
-  WeldPropertiesHandler.cs  commands (SetWeldProp, SetWeldNumber) + the loop over connectors
-  MiscUtilities.cs          Acad (static doc/db/editor/DataLinksManager) + extension helpers
+  WeldPropertiesHandler.cs  commands (SetWeldProp, SetWeldNumber, WeldPropMapping, WeldPropAuto) + ProcessWelds (loop over connectors)
+  WeldAutoUpdate.cs         auto-update of new welds (events, see Roadmap 3); PluginApp.cs = IExtensionApplication that starts it
+  MiscUtilities.cs          Acad (active doc/db/editor/DataLinksManager, resolved on every use) + extension helpers
   WeldKey.cs                structPort + Weld model (port normalisation); structPort.Props = all part properties
   Settings/                 per-project JSON settings (WeldPropSettings/MappingProfile, SettingsStore) + UserPreferences
   Schema/ProjectSchema.cs   reads part/weld class properties from Project Setup (project database)
@@ -35,6 +36,7 @@ tools/compile-check/        Linux compile check (C# + XAML) against the real 202
 |-----------------|--------------|
 | `SetWeldProp`   | For every visible `ACPPCONNECTOR` whose `JointType` is `Buttweld`, `Tap` or `Socketweld`, writes the mapped weld properties of the active profile onto the weld sub-part row (default profile: `Material1/2`, `OD1/2`, `WallThickness1/2`, `LDS1/2`, `SPEC1/2`). Mapped weld properties that the weld classes don't have are skipped, with one message. |
 | `WeldPropMapping` | Opens the SPDS **Weld Property Mapping** window: drag part properties (read from Project Setup) onto weld properties, add any weld class property per side ("+ Add weld property"), weld properties missing in Project Setup are shown red, manage profiles, dark/light theme. **Save** writes the settings file; **Save and update all welds** also runs the mapping on the drawing. |
+| `WeldPropAuto` | Switches the project's `autoUpdate` on/off (also a checkbox in the mapping window). When on, welds created by a command get their mapped properties when that command ends. |
 | `SetWeldNumber` | Runs `SetWeldProp`, then groups welds that have the same OD, wall thickness and material on both ports. It numbers each group, starting from 11 for butt welds, 51 for taps and 71 for socket welds. Writes the result to `WeldNumber`. |
 
 Both commands read `<Plant project folder>\SPDS\WeldPropUtils.json` (see *Project settings* below).
@@ -53,7 +55,7 @@ The side is stored per mapping (`side`), not derived from the name.
   Each Plant project has its own file. Other SPDS tools should add their own files to the same `SPDS` folder.
 - Created with the defaults (the same behaviour as the original hard-coded plugin) the first time a command runs.
   A file that can't be read is left untouched and the defaults are used for that run, with a message on the command line.
-- Content: `schemaVersion`, `activeProfile`, `autoUpdate` (reserved for step 2), `numbering` (start numbers for
+- Content: `schemaVersion`, `activeProfile`, `autoUpdate` (new welds filled automatically; default off), `numbering` (start numbers for
   Buttweld/Tap/Socketweld), and `profiles[]`, each with `name`, `mirrorSides` and `mappings[]` of `{target, side (1|2), source}`.
 - Serializer: `DataContractJsonSerializer`, which is built into .NET 8. Don't add Newtonsoft.Json, because AutoCAD loads its own copy.
   When adding a member: `[DataMember(Name = "camelCase")]`, a default in `Normalize()`, and raise `schemaVersion` if old
@@ -90,25 +92,25 @@ The side is stored per mapping (`side`), not derived from the name.
   1. ✅ Per-project settings file with mapping profiles (the commands already use it).
   2. ✅ (v1, untested in Plant 3D) WPF **Weld Property Mapping** window (`WeldPropMapping`). Still open: weld preview/"pick weld",
      "apply to selected welds", SPDS logo in the header (waiting for the user's OK to commit it).
-  3. Auto-update through events: `DataLinksManager.DataLinkOperationOccurred` only *collects* the affected row IDs
-     (no DB work inside the handler), then `Document.CommandEnded` processes them once. Include a re-entrancy guard,
-     skip UNDO/REDO/sync/audit, and an on/off switch (`autoUpdate`). Weld numbering stays manual.
+  3. ✅ (v1, untested in Plant 3D) Auto-update of new welds (`WeldAutoUpdate`): `Database.ObjectAppended` only collects the
+     ObjectIds of new `Connector`s; `CommandEnded/Cancelled/Failed` attaches one `Application.Idle` handler, which waits for
+     `Editor.IsQuiescent`, processes only those connectors under `LockDocument`, then detaches. `_busy` re-entrancy guard;
+     skips U/UNDO/REDO/MREDO and our own commands; `autoUpdate` read from the settings file only when it changed; more
+     than 500 new connectors at once → message to run SetWeldProp. Welds whose parts change later (size/spec change
+     without a new connector) are not re-filled yet. Weld numbering stays manual.
 - The SessionStart hook (`.claude/hooks/session-start.sh`) installs `dotnet-sdk-10.0` and `dotnet-sdk-8.0` in cloud sessions.
 
-## Known issues (from the review, verified against the SDK; not fixed yet)
+## Known issues (from the review, verified against the SDK)
 1. **Nozzle lookup**: `MakeAcPpObjectId(connPart.ObjectId, 1)` always reads nozzle sub-index 1, so equipment with
    several nozzles gets the wrong nozzle's properties. `eqp` is also null when a non-equipment part has a port name longer
    than 2 characters. Fix: use `ConnectionManager.GetConnectedPairAt(pair).PpObjectId` (it carries the `SubIndex`),
    or `dlm.SelectObjectSubIds` plus a `PortName` match. Check `connPart is Equipment`, not the name length.
-2. **Stale context**: `Acad` caches `doc/db/ed/dlm` in static fields the first time it is used. After switching drawings
-   or projects, the commands keep acting on the old ones.
+2. ✅ Fixed: `Acad` members are properties resolved on every use (was: static fields cached on first use).
 3. **Size ordering**: `Weld.ComparePorts` compares OD and wall thickness as **strings** (`"114.3" < "60.3"`).
    `SetNum` uses `Convert.ToDouble`, which depends on the locale and fails on comma-decimal Windows.
-4. **Useless lock**: `using (DocumentLock ...) ;` has a stray `;` and releases immediately (compiler warning CS0642).
-   Harmless for a Modal command, but misleading.
+4. ✅ Fixed: the stray `using (DocumentLock ...) ;` is gone; Modal commands are locked by AutoCAD, WeldAutoUpdate locks itself.
 5. **Weld sub-part row**: `FindWeldRowId` always returns the row of sub-index 1, whichever sub-part is the `WeldSubPart`.
-6. **Row lookups throw**: `FindAcPpRowId` throws `DLException` for unlinked objects. There's no guard, so a single
-   bad object aborts the whole command.
+6. ✅ Mitigated: `ProcessWelds` catches per connector, skips it and reports the count + first error once.
 7. Inconsistent writes: `WeldNumber` uses `PnPRow.BeginEdit/EndEdit`, other properties use `dlm.SetProperties`.
-8. `GetP3dProps` shows a `MessageBox` for each failure, so a run can produce hundreds of dialogs.
+8. ✅ Fixed: `GetP3dProps` throws instead of showing a `MessageBox`; failures are reported once by `ProcessWelds`.
 9. Weld-number ranges can overlap: more than 40 butt-weld groups run into the tap range (51+).
