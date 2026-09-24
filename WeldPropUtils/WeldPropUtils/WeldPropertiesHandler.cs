@@ -120,7 +120,8 @@ namespace WeldPropUtils
             UserPreferences prefs = UserPreferences.Load();
             bool dark = prefs.Theme == UserPreferences.ThemeDark
                 || (prefs.Theme != UserPreferences.ThemeLight && AutoCadUsesDarkTheme());
-            var window = new MappingWindow(settings, sources, weldTargets, PlantApplication.CurrentProject.Name, dark, prefs);
+            var viewModel = new MappingViewModel(settings, sources, weldTargets, PlantApplication.CurrentProject.Name);
+            var window = new MappingWindow(viewModel, dark, prefs);
             AcApp.ShowModalWindow(window);
             if (!window.Saved) return;
 

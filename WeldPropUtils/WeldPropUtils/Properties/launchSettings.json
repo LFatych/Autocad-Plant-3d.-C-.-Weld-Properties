@@ -1,6 +1,11 @@
 {
   "profiles": {
-    "Plant 3D 2026": {
+    "Plant 3D 2027": {
+      "commandName": "Executable",
+      "executablePath": "C:\\Program Files\\Autodesk\\AutoCAD 2027\\acad.exe",
+      "commandLineArgs": "/product PLNT3D /language \"en-US\""
+    },
+    "Plant 3D 2026 (build with PlantVersion=2026)": {
       "commandName": "Executable",
       "executablePath": "C:\\Program Files\\Autodesk\\AutoCAD 2026\\acad.exe",
       "commandLineArgs": "/product PLNT3D /language \"en-US\""

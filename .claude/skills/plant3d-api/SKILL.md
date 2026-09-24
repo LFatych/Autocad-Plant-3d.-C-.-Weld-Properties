@@ -1,6 +1,6 @@
 ---
 name: plant3d-api
-description: Verified reference for the AutoCAD Plant 3D .NET API (Autodesk.ProcessPower.*) for Plant 3D 2024 (.NET Framework 4.8) and 2026 (.NET 8) — DataLinksManager, row IDs vs ObjectIds, PpObjectId/sub-indexes, PnPDatabase/PnPRow, Connector/WeldSubPart, Equipment/NozzleSubPart, Port/Pair/ConnectionManager, property names, and the project database tables. Use whenever reading or writing Plant 3D object data, walking piping connectivity, handling welds or nozzles, or adding a command that touches Plant 3D parts.
+description: Verified reference for the AutoCAD Plant 3D .NET API (Autodesk.ProcessPower.*) for Plant 3D 2024 (.NET Framework 4.8), 2026 (.NET 8) and 2027 (.NET 10) — DataLinksManager, row IDs vs ObjectIds, PpObjectId/sub-indexes, PnPDatabase/PnPRow, Connector/WeldSubPart, Equipment/NozzleSubPart, Port/Pair/ConnectionManager, property names, and the project database tables. Use whenever reading or writing Plant 3D object data, walking piping connectivity, handling welds or nozzles, or adding a command that touches Plant 3D parts.
 ---
 
 # AutoCAD Plant 3D .NET API
@@ -8,11 +8,13 @@ description: Verified reference for the AutoCAD Plant 3D .NET API (Autodesk.Proc
 Checked against the user's SDKs (Google Drive folder `1S-v3uK1nUuRrxSziWlyyNFYntvLAh918`):
 - `AP3D_2024_SDK`: assemblies version 15.0, .NET Framework 4.7/4.8.
 - `AP3D_2026_SDK`: assemblies version 17.0, `.NETCoreApp,Version=v8.0`.
+- `AP3D_2027_SDK` (folder `1bHCL2xQfAR9JbWepFa0TAloD7PHH1boo`): assemblies version 18.0 (AcCoreMgd 26.0), `.NETCoreApp,Version=v10.0`.
+  **2027 is the default build target of this repo.**
 
 Sources: the developer guide `docs/plantsdk_dev.chm` (read in full), the reference `docs/plantsdk_ref.chm`, and the
 metadata of the `inc-x64/*.dll` files.
 **`reference.md` next to this file lists the exact member signatures.** Use it before writing any call.
-Plant 3D 2027 and later (.NET 10): there is no SDK yet. Treat anything there as unverified.
+Plant 3D 2028 and later: no SDK yet. Treat anything there as unverified.
 
 ## Assemblies → namespaces
 
@@ -25,6 +27,7 @@ Plant 3D 2027 and later (.NET 10): there is no SDK yet. Treat anything there as 
 | `inc-x64\PnPDataObjects.dll` | `Autodesk.ProcessPower.DataObjects` | `PnPDatabase`, `PnPTable`, `PnPRow`, `PnPRowIdArray` |
 | `inc-x64\PnP3dObjectsMgd.dll` | `Autodesk.ProcessPower.PnP3dObjects` | `Part`, `Pipe`, `Connector`, `Equipment`, `SubPart`, `WeldSubPart`, `NozzleSubPart`, `Port`, `Pair`, `ConnectionManager`, `ConnectionIterator` |
 | `inc-x64\PnPCommonMgd.dll` | `Autodesk.ProcessPower.Common` | shared helpers (needed by the others at compile time) |
+| `inc-x64\PnP3dStructureObjectsMgd.dll` (**2027+**) | `Autodesk.ProcessPower.PnP3dStructureObjects` | `Structure`, `StructureElement`, `StructureMember`, `StructurePlate`, `StructureGrating`, `StructureFooting`, `Catalog`, `Material`, `ShapeSize`, `ShapeStandard`, `ShapeType`, `Justification`, `MiterType` (not referenced by this repo yet) |
 
 Watch out for name clashes. `Part`, `Port` and `OpenMode` exist in more than one namespace. This repo uses the aliases
 `pPart`, `pPort` and `portCol`.
@@ -145,10 +148,26 @@ Everything this repo uses is **identical**. The differences are:
 
 Proof: `tools/compile-check` builds the unchanged repo code for both SDKs with no errors (see the `plant3d-build-check` skill).
 
+## 2026 → 2027 differences (API surface diff of the DLLs)
+Everything this repo uses is **identical** (PnP3dObjectsMgd and PnP3dProjectPartsMgd have no changes at all). The differences are:
+- `DataLinksManager.BeginMultiDrawingMerge()` / `EndMultiDrawingMerge()` (new; "flag files for multi-drawing merge").
+  Not documented in detail yet; verify before use.
+- New `PnP3dStructureObjectsMgd.dll`: the structure API (members, plates, gratings, footings, catalog/shape data).
+- `PnPDataObjects`: `PnPDatabaseLink.ProviderPasswordCallback`, `PnPQryParser.ColumnNeedsQuote`; `PnPSortItem` became a
+  primary-constructor struct (same constructor).
+- `PnPProjectManagerMgd`: document-management helpers lost their `recursive` parameters
+  (`DocumentManagementUtils.CollectFileAssociations/CollectFilesForCheckOut`), `ValidateLocalWorkspace(bool bCheckPermissions)`,
+  new `PickListConflict`, `ObjectConflict.Clone()`. `AcquisitionStatus.NoOrMultipleSource` removed.
+- `PnPCommonMgd`: small Excel/import additions; `ShareType.IPC` removed.
+- `ProductInformation.ProductYear` = "2027", `ProductVersion` = "18.0.x".
+- Other 2027 "What's New" items (developer guide): active tool palette, Navisworks/Point Cloud dictionaries, xref block
+  table record handle, highlight/unhighlight, collect xrefs.
+- Runtime: .NET 10. Building needs the .NET 10 SDK, and Autodesk's guide asks for **Visual Studio 2026 (18.x)**.
+
 ## Looking up other members
 The decompiled SDK is not in the repo. To look up another member:
 1. Fetch the DLL (see `plant3d-build-check` for the Drive file IDs).
-2. Run `ilspycmd -o <dir> <dll>`: `dotnet tool install -g ilspycmd --version 8.2.0.7535`, then run it with
+2. Run `ilspycmd -o <dir> <dll>`: `dotnet tool install -g ilspycmd` (11.x; 8.x fails on the net10 DLLs), then run it with
    `DOTNET_ROLL_FORWARD=Major`.
 3. Grep the decompiled output.
 

@@ -1,17 +1,34 @@
 <Project>
   <!--
-    Injected into WeldPropUtils.csproj by build.sh (CustomAfterMicrosoftCommonTargets) so the real project
-    compiles on Linux: the .NET SDK there has no WindowsDesktop (WinForms/WPF) targets, so build.sh passes
-    ImportWindowsDesktopTargets=false and this file adds the WinForms/WPF reference assemblies instead.
-    Never used by Visual Studio builds.
+    Injected into WeldPropUtils.csproj by build.sh (CustomAfterMicrosoftCommonTargets) so the real project,
+    XAML included, compiles on Linux. Never used by Visual Studio builds.
+    - The Linux .NET SDK has no WindowsDesktop (WinForms/WPF) SDK: build.sh passes ImportWindowsDesktopTargets=false,
+      and this file references the WindowsDesktop reference pack from NuGet instead.
+    - XAML: imports Microsoft.WinFx.targets from the NuGet package Microsoft.NET.Sdk.WindowsDesktop 3.0.0
+      (WpfSdkDir, downloaded by build.sh). Its markup compiler assumes Windows '\' paths; build.sh adds symlinks
+      so those paths resolve, and the target below compiles the generated *.g.cs files.
+    - Limitation: markup pass 2 (XAML that uses this assembly's own types, e.g. custom-control properties)
+      does not run here, so typos in custom-control attributes are only caught by Visual Studio.
   -->
   <PropertyGroup>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <NoWarn>$(NoWarn);MSB3270;MSB3277;NU1505;CA1416</NoWarn>
-    <WinDesktopRefDir>$(NuGetPackageRoot)microsoft.windowsdesktop.app.ref/8.0.0/ref/net8.0/</WinDesktopRefDir>
+    <WinDesktopRefVersion Condition="$(TargetFramework.StartsWith('net8'))">8.0.0</WinDesktopRefVersion>
+    <WinDesktopRefVersion Condition="$(TargetFramework.StartsWith('net10'))">10.0.12</WinDesktopRefVersion>
+    <WinDesktopRefDir>$(NuGetPackageRoot)microsoft.windowsdesktop.app.ref/$(WinDesktopRefVersion)/ref/$(TargetFramework.Replace('-windows',''))/</WinDesktopRefDir>
   </PropertyGroup>
   <ItemGroup>
-    <PackageDownload Include="Microsoft.WindowsDesktop.App.Ref" Version="[8.0.0]" />
+    <PackageDownload Include="Microsoft.WindowsDesktop.App.Ref" Version="[$(WinDesktopRefVersion)]" />
     <Reference Include="$(WinDesktopRefDir)*.dll" Private="False" />
+    <Page Include="**/*.xaml" Exclude="bin/**;obj/**" />
   </ItemGroup>
+
+  <Import Project="$(WpfSdkDir)/targets/Microsoft.WinFx.targets" />
+
+  <Target Name="LinuxAddXamlGeneratedCode" AfterTargets="MarkupCompilePass1">
+    <ItemGroup>
+      <_LinuxXamlCode Include="@(Page->'%(RootDir)%(Directory)%(Filename).g.cs')" />
+      <Compile Include="@(_LinuxXamlCode)" Condition="Exists('%(FullPath)')" />
+    </ItemGroup>
+  </Target>
 </Project>

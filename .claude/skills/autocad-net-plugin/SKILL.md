@@ -1,11 +1,12 @@
 ---
 name: autocad-net-plugin
-description: AutoCAD .NET (ObjectARX managed API) plugin fundamentals as they apply inside Plant 3D 2026 (.NET 8) — CommandMethod/CommandFlags, transactions, document locking, SelectionFilter/SelectAll, Editor output, IExtensionApplication, NETLOAD and debugging. Use when adding or changing commands, touching transactions or selections, or changing how the plugin is loaded.
+description: AutoCAD .NET (ObjectARX managed API) plugin fundamentals as they apply inside Plant 3D 2027 (.NET 10; 2026/.NET 8 still buildable) — CommandMethod/CommandFlags, transactions, document locking, SelectionFilter/SelectAll, Editor output, IExtensionApplication, NETLOAD and debugging. Use when adding or changing commands, touching transactions or selections, or changing how the plugin is loaded.
 ---
 
 # AutoCAD .NET plugin basics (inside Plant 3D)
 
-The plugin targets Plant 3D 2026 only (`net8.0-windows`); see CLAUDE.md for the build.
+The plugin targets Plant 3D 2027 (`net10.0-windows`) by default; `-p:PlantVersion=2026` builds for 2026 (`net8.0-windows`).
+See CLAUDE.md for the build.
 Reference DLLs: `AcCoreMgd` (Application, Document, Editor, CommandMethod), `AcDbMgd` (Database, Transaction, entities)
 and `AcMgd` (UI). Always reference them with `Private=False`.
 

@@ -1,0 +1,46 @@
+﻿<!--
+  SPDS dark theme: brand yellow #FDD541, graphite #44525C (.claude/skills/spds-wpf-ui).
+  Both theme files define the same keys; controls use {DynamicResource Spds.*} so switching themes repaints at once.
+-->
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <SolidColorBrush x:Key="Spds.WindowBg" Color="#1F262B" />
+    <SolidColorBrush x:Key="Spds.ChromeBg" Color="#29323A" />
+    <SolidColorBrush x:Key="Spds.ChromeText" Color="#EEF0EE" />
+    <SolidColorBrush x:Key="Spds.ChromeMuted" Color="#A9B3BA" />
+    <SolidColorBrush x:Key="Spds.ChromeBorder" Color="#4A5761" />
+    <SolidColorBrush x:Key="Spds.HeaderRule" Color="#FDD541" />
+    <SolidColorBrush x:Key="Spds.PanelBg" Color="#232B31" />
+    <SolidColorBrush x:Key="Spds.CardBg" Color="#29323A" />
+    <SolidColorBrush x:Key="Spds.FieldBg" Color="#313C45" />
+    <SolidColorBrush x:Key="Spds.Border" Color="#3E4A54" />
+    <SolidColorBrush x:Key="Spds.BorderStrong" Color="#52606B" />
+    <SolidColorBrush x:Key="Spds.Text" Color="#EEF0EE" />
+    <SolidColorBrush x:Key="Spds.Muted" Color="#A9B3BA" />
+    <SolidColorBrush x:Key="Spds.Faint" Color="#8F9AA2" />
+    <SolidColorBrush x:Key="Spds.Mono" Color="#D3D9DD" />
+    <SolidColorBrush x:Key="Spds.ChipBg" Color="#2B343B" />
+    <SolidColorBrush x:Key="Spds.ChipBorder" Color="#3E4A54" />
+    <SolidColorBrush x:Key="Spds.SelectedBg" Color="#3A3A2C" />
+    <SolidColorBrush x:Key="Spds.SelectedBorder" Color="#FDD541" />
+    <SolidColorBrush x:Key="Spds.DropMappedBg" Color="#313C45" />
+    <SolidColorBrush x:Key="Spds.DropEmptyBg" Color="#20282D" />
+    <SolidColorBrush x:Key="Spds.DropEmptyBorder" Color="#5A6772" />
+    <SolidColorBrush x:Key="Spds.DropOverBg" Color="#3A3A2C" />
+    <SolidColorBrush x:Key="Spds.DropOverBorder" Color="#FDD541" />
+    <SolidColorBrush x:Key="Spds.TabBorder" Color="#4A5761" />
+    <SolidColorBrush x:Key="Spds.TabText" Color="#D3D9DD" />
+    <SolidColorBrush x:Key="Spds.TabOnBg" Color="#FDD541" />
+    <SolidColorBrush x:Key="Spds.TabOnText" Color="#1F262B" />
+    <SolidColorBrush x:Key="Spds.Side1" Color="#FDD541" />
+    <SolidColorBrush x:Key="Spds.Side1Ring" Color="#FDD541" />
+    <SolidColorBrush x:Key="Spds.Side2" Color="#9FB3C2" />
+    <SolidColorBrush x:Key="Spds.PrimaryBg" Color="#FDD541" />
+    <SolidColorBrush x:Key="Spds.PrimaryText" Color="#1F262B" />
+    <SolidColorBrush x:Key="Spds.PrimaryBorder" Color="#FDD541" />
+    <SolidColorBrush x:Key="Spds.NoteBg" Color="#2C3740" />
+    <SolidColorBrush x:Key="Spds.NoteBorder" Color="#465460" />
+    <SolidColorBrush x:Key="Spds.NoteText" Color="#DCE2E5" />
+    <SolidColorBrush x:Key="Spds.Unmapped" Color="#F2A07B" />
+    <SolidColorBrush x:Key="Spds.RowLine" Color="#323C44" />
+</ResourceDictionary>

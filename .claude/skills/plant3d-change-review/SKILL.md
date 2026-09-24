@@ -1,6 +1,6 @@
 ---
 name: plant3d-change-review
-description: Checklist to run before committing any change to this Plant 3D plugin — compile check against the Plant 3D 2026 SDK, API/runtime/behaviour review, and the hand-off test plan for the user (who runs Plant 3D on Windows). Use before every commit, when reviewing a diff, or when the user asks "is this ready?".
+description: Checklist to run before committing any change to this Plant 3D plugin — compile check (C# and XAML) against the Plant 3D 2027 SDK (and 2026 while kept), API/runtime/behaviour review, and the hand-off test plan for the user (who runs Plant 3D on Windows). Use before every commit, when reviewing a diff, or when the user asks "is this ready?".
 ---
 
 # Pre-commit review for WeldPropUtils
@@ -8,9 +8,13 @@ description: Checklist to run before committing any change to this Plant 3D plug
 Claude can compile but cannot run the plugin. Compile it, review it, then give the user a test plan.
 
 ## 1. Compiles (mandatory)
-- [ ] Run the `plant3d-build-check` skill. `net8.0-windows` must build with no errors and no new warnings.
-- [ ] Each new Autodesk reference is added to `WeldPropUtils.csproj` with an `$(PlantSdk)` HintPath and `Private=False`.
-- [ ] Test plans are for **Plant 3D 2026** (the only supported version).
+- [ ] Run the `plant3d-build-check` skill. `net10.0-windows` (2027) must build with no errors and no new warnings;
+      `net8.0-windows` (2026) too, as long as `PlantVersion=2026` is kept.
+- [ ] Each new Autodesk reference is added to `WeldPropUtils.csproj` as `<Reference Include="Name" Private="False" />`
+      (no HintPath: resolved from `$(AcadDir)` / `$(AcadDir)\PLNT3D`). A 2027-only DLL (e.g. `PnP3dStructureObjectsMgd`) needs a
+      `PlantVersion` condition.
+- [ ] UI changes: XAML + view model (see `spds-wpf-ui`); logic not in code-behind; brushes via `DynamicResource`.
+- [ ] Test plans are for **Plant 3D 2027** (the default target).
 
 ## 2. Runtime correctness (not caught by the compiler)
 - [ ] Document, Database, Editor and DataLinksManager are fetched when the command runs, never cached in static fields.
@@ -29,7 +33,8 @@ Claude can compile but cannot run the plugin. Compile it, review it, then give t
 In the final message, include:
 1. What changed and why, briefly.
 2. The compile-check result for each target.
-3. **Build**: "Build in Visual Studio (Release), then NETLOAD `bin\Release\WeldPropUtils.dll` in Plant 3D <version>."
+3. **Build**: "Build in Visual Studio 2026 (Release), then NETLOAD `bin\Release\net10.0-windows\WeldPropUtils.dll` in Plant 3D 2027."
+   For UI changes also list what the compile check can't see: resource keys, theme switch, bindings (VS Output window).
 4. **Manual test plan**: which drawing to use and which cases to cover:
    - butt weld pipe–elbow
    - tap

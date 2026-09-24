@@ -3,8 +3,9 @@
 A C# class library that runs inside **AutoCAD Plant 3D**. It reads the parts on each side of a weld (a Plant 3D
 *connector*) and copies their properties into custom properties on the weld. It can also assign weld numbers.
 
-Target: **Plant 3D 2026 only** (.NET 8, `net8.0-windows`). Decision by the user: no multi-version support for now.
-A future Plant 3D version gets its own branch or build.
+Target: **Plant 3D 2027** (.NET 10, `net10.0-windows`), the version the user runs. One switch in the csproj,
+`PlantVersion` (default `2027`), selects the target; `-p:PlantVersion=2026` still builds for Plant 3D 2026 (.NET 8).
+No multi-targeting in one build (user decision: one version at a time).
 
 ## Layout
 
@@ -16,10 +17,15 @@ WeldPropUtils/WeldPropUtils/
   WeldKey.cs                structPort + Weld model (port normalisation); structPort.Props = all part properties
   Settings/                 per-project JSON settings (WeldPropSettings/MappingProfile, SettingsStore) + UserPreferences
   Schema/ProjectSchema.cs   reads part/weld class properties from Project Setup (project database)
-  UI/                       WPF mapping window (MappingWindow) + SPDS dark/light theme (SpdsTheme), built in code
-  WeldPropUtils.csproj      SDK-style, net8.0-windows, WPF + WinForms; references from the AutoCAD 2026 install folder
-  Properties/launchSettings.json   F5 starts Plant 3D 2026 (acad.exe /product PLNT3D)
-tools/compile-check/        Linux compile check against the real 2026 SDK DLLs (used by Claude)
+  UI/                       WPF mapping window in XAML + MVVM (user decision: XAML, so it is easy to edit)
+    MappingWindow.xaml(.cs)   layout + bindings; thin code-behind (theme swap, close)
+    MappingViewModel.cs       window state + commands; Mvvm.cs = ObservableObject/RelayCommand
+    Controls/                 custom controls: PropertyChip (drag source), DropZone (drop target)
+    Themes/                   SpdsDark.xaml / SpdsLight.xaml (brushes) + SpdsStyles.xaml (styles)
+  WeldPropUtils.csproj      SDK-style, PlantVersion 2027 → net10.0-windows (2026 → net8.0-windows), WPF + WinForms;
+                            references from the AutoCAD <PlantVersion> install folder
+  Properties/launchSettings.json   F5 starts Plant 3D 2027 (acad.exe /product PLNT3D)
+tools/compile-check/        Linux compile check (C# + XAML) against the real 2027/2026 SDK DLLs (used by Claude)
 .claude/skills/             domain knowledge for Claude (see below)
 ```
 
@@ -52,25 +58,28 @@ The weld class must have these custom properties, added in Project Setup:
 - Per-user preferences, such as the UI theme, don't belong here. They go to `%AppData%\SPDS\WeldPropUtils\`.
 
 ## Build and run (Windows)
-- Visual Studio 2022 (17.8+) with the .NET 8 SDK.
-- References come from the installed **AutoCAD Plant 3D 2026**: `C:\Program Files\Autodesk\AutoCAD 2026` and its `PLNT3D`
+- **Visual Studio 2026 (18.x)** with the .NET 10 SDK (Autodesk's 2027 developer guide requires VS 2026).
+  For `PlantVersion=2026`: VS 2022 17.8+ / .NET 8 SDK is enough.
+- References come from the installed **AutoCAD Plant 3D 2027**: `C:\Program Files\Autodesk\AutoCAD 2027` and its `PLNT3D`
   subfolder (MSBuild `AssemblySearchPaths`), with no SDK and no environment variable. For another install folder, set `AcadDir`.
   `Private=False` (Copy Local off) on purpose: AutoCAD already loads these DLLs, and a second copy causes type-identity errors.
-- Output: `bin\<Config>\net8.0-windows\WeldPropUtils.dll`.
-- F5 starts Plant 3D 2026 (`Properties/launchSettings.json`). Load the DLL with `NETLOAD`. A Plant 3D project must be open.
+- Output: `bin\<Config>\net10.0-windows\WeldPropUtils.dll` (2026: `net8.0-windows`).
+- F5 starts Plant 3D 2027 (`Properties/launchSettings.json`). Load the DLL with `NETLOAD`. A Plant 3D project must be open.
 
 ## Working with Claude in this repo
-- **Claude can compile but not run.** `tools/compile-check` builds the sources on Linux against the real SDK
-  DLLs of Plant 3D 2026, by building the real csproj. The DLLs come from the user's Google Drive and are **never
+- **Claude can compile but not run.** `tools/compile-check` builds the sources and the XAML on Linux against the real SDK
+  DLLs of Plant 3D 2027 (and 2026), by building the real csproj. The DLLs come from the user's Google Drive and are **never
   committed** (see the `plant3d-build-check` skill). The user then tests behaviour in Plant 3D. Every change
   ends with a short manual test plan.
 - Only use API members listed in `.claude/skills/plant3d-api/reference.md`, or ones you verified in the SDK.
   Never invent members.
-- .NET 8 / C# 12 (the SDK default). Modern C# is fine; no .NET Framework-only APIs.
+- .NET 10 / C# 14 (the SDK default); code must also compile for .NET 8 / C# 12 while 2026 is kept buildable,
+  so don't use C# 13/14-only features. No .NET Framework-only APIs.
 - Match the existing style: extension methods in `MiscUtilities`, commands in `WeldPropertiesHandler`.
+  UI: XAML + view model + custom controls, no UI built in code (see `spds-wpf-ui`).
 - Skills in `.claude/skills/`:
-  - `plant3d-api`: verified Plant 3D API facts + `reference.md` with exact signatures
-  - `plant3d-build-check`: fetch the SDK DLLs from Drive and compile-check against the 2026 SDK
+  - `plant3d-api`: verified Plant 3D API facts (2024/2026/2027 diffs) + `reference.md` with exact signatures
+  - `plant3d-build-check`: fetch the SDK DLLs from Drive and compile-check (C# + XAML) against the 2027/2026 SDKs
   - `autocad-net-plugin`: AutoCAD .NET basics (commands, transactions, locking, selection, loading)
   - `plant3d-change-review`: the checklist before every commit
   - `spds-wpf-ui`: SPDS brand themes (dark + light), fonts, logo, WPF hosting in AutoCAD, approved mapping-window layout
@@ -81,7 +90,7 @@ The weld class must have these custom properties, added in Project Setup:
   3. Auto-update through events: `DataLinksManager.DataLinkOperationOccurred` only *collects* the affected row IDs
      (no DB work inside the handler), then `Document.CommandEnded` processes them once. Include a re-entrancy guard,
      skip UNDO/REDO/sync/audit, and an on/off switch (`autoUpdate`). Weld numbering stays manual.
-- The SessionStart hook (`.claude/hooks/session-start.sh`) installs `dotnet-sdk-8.0` in cloud sessions.
+- The SessionStart hook (`.claude/hooks/session-start.sh`) installs `dotnet-sdk-10.0` and `dotnet-sdk-8.0` in cloud sessions.
 
 ## Known issues (from the review, verified against the SDK; not fixed yet)
 1. **Nozzle lookup**: `MakeAcPpObjectId(connPart.ObjectId, 1)` always reads nozzle sub-index 1, so equipment with

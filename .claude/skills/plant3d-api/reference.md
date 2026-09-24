@@ -1,7 +1,8 @@
 # Plant 3D .NET API — verified signatures
 
 Extracted from the public metadata of the Plant 3D **2024** SDK DLLs (`inc-x64`, assembly version 15.0).
-The same members exist unchanged in the **2026** SDK (17.0, .NET 8), except where noted in SKILL.md ("2024 → 2026 differences").
+The same members exist unchanged in the **2026** SDK (17.0, .NET 8) and the **2027** SDK (18.0, .NET 10), except where noted in
+SKILL.md ("2024 → 2026 differences", "2026 → 2027 differences").
 Modifiers such as `unsafe`/`virtual` and marshalling attributes are stripped. `bool` parameters are plain `bool` in C#.
 This is a curated subset. To look up anything else, see *Looking up other members* in SKILL.md.
 

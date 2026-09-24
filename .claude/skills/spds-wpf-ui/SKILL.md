@@ -62,7 +62,7 @@ differ in lightness, not only in hue.
   per-user settings.
 - Dark title bar on Windows 10/11: optional, via `DwmSetWindowAttribute(DWMWA_USE_IMMERSIVE_DARK_MODE=20)`.
 
-## Hosting the window (verified in AcCoreMgd 2026; same in 2024)
+## Hosting the window (verified in AcCoreMgd 2024, 2026 and 2027)
 `Autodesk.AutoCAD.ApplicationServices.Core.Application` (the AcMgd `Application` inherits it):
 ```
 bool? ShowModalWindow(Window formToShow)
@@ -74,15 +74,30 @@ Use `Application.ShowModalWindow(window)`, not `window.ShowDialog()`. It parents
 and can remember its size and position. A modal window runs inside the command, so Plant/DWG access afterwards stays in
 document context.
 
-## Project/build notes
-- Add `<UseWPF>true</UseWPF>` to the SDK-style csproj. XAML files are picked up as `Page` items automatically.
-- **The UI is built in C# code (UI/MappingWindow.cs, UI/SpdsTheme.cs), not XAML**, so the compile check covers it.
-  Keep it that way unless the user wants XAML. Reason: **XAML cannot be compile-checked on Linux.** The WPF markup compiler only ships with the Windows SDK. So:
-  - keep the logic (the mapping model, profile load/save, reading the schema) in plain C# classes, which `tools/compile-check` does verify
-  - keep XAML declarative (bindings plus a thin code-behind)
-  - tell the user that the XAML is only verified by their Visual Studio build.
+## Project/build notes: XAML + MVVM + custom controls (user decision, 2026-09-24)
+The user wants XAML so they can edit the UI themselves. Structure (`WeldPropUtils/WeldPropUtils/UI/`):
+
+| File | Role |
+|---|---|
+| `MappingWindow.xaml` / `.xaml.cs` | the window. Layout and bindings only; code-behind = theme swap + close on `CloseRequested` |
+| `MappingViewModel.cs` | all window state and commands (profiles, sources, side 1/2 rows, summary). Works on the `WeldPropSettings` it was given; the command saves only when the window reports `Saved` |
+| `Mvvm.cs` | `ObservableObject` (`SetField`) and `RelayCommand` |
+| `Controls/PropertyChip.cs` | draggable part property (`PropertyName`, `Scope`, `IsSelected`); starts `DragDrop.DoDragDrop` with the name as `DataFormats.StringFormat` |
+| `Controls/DropZone.cs` | weld property field (`TargetName`, `SourceName`, `IsMapped`, `IsDragOver`, `DropCommand`); click = assign the selected chip |
+| `Themes/SpdsDark.xaml`, `Themes/SpdsLight.xaml` | brushes only, the same `Spds.*` keys in both (table above) |
+| `Themes/SpdsStyles.xaml` | text, button, pill, textbox, checkbox, card styles and the implicit `PropertyChip` / `DropZone` styles |
+
+Rules:
+- The theme is `MergedDictionaries[0]` of the window, `SpdsStyles.xaml` is `[1]`. Swap `[0]` with a pack URI
+  `/WeldPropUtils;component/UI/Themes/SpdsDark.xaml`. Colours in styles and templates always via `{DynamicResource Spds.X}`.
+- Custom controls derive from an existing WPF control (`Button`) and get their look from an implicit style in
+  `SpdsStyles.xaml` (no `Themes/Generic.xaml`, no `ThemeInfo` attribute needed).
+- Keep logic out of code-behind: new behaviour goes to the view model (unit-testable in plain C#) or a control.
+- XAML **is compile-checked on Linux** (both markup passes, see `plant3d-build-check`): unknown tags/properties, missing
+  handlers and wrong `x:Name`s fail the build. Not checked: missing resource keys, pack URIs and binding paths
+  (runtime only; they show as binding errors in the VS Output window). Mention these in the test plan.
 - Drag and drop: WPF `DragDrop.DoDragDrop` with the property id as data. Also support click-to-assign (select, then click a
-  target) and keyboard use (Enter on a focused target), as in the mockup.
+  target) and keyboard use (Enter/Space on a focused target, which is a `Button`), as in the mockup.
 
 ## Mapping window layout (approved)
 - **Header:** logo, title "Weld Property Mapping", subtitle with the project name, theme toggle, profile combo, Import/Export.

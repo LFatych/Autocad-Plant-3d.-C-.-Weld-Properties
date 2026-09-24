@@ -1,18 +1,23 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <!--
-    Plant 3D 2026 plugin (.NET 8).
-    References come from the AutoCAD 2026 install folder (Ac*Mgd.dll in the root, Plant 3D PnP*.dll in PLNT3D\).
-    Different install folder: build with -p:AcadDir=... or set an environment variable AcadDir.
+    AutoCAD Plant 3D plugin. Default: Plant 3D 2027 (.NET 10).
+    PlantVersion picks the Plant 3D release, its .NET runtime and its install folder:
+      2027 -> net10.0-windows, C:\Program Files\Autodesk\AutoCAD 2027   (default)
+      2026 -> net8.0-windows,  C:\Program Files\Autodesk\AutoCAD 2026   (build with -p:PlantVersion=2026)
+    References come from the install folder (Ac*Mgd.dll in the root, Plant 3D PnP*.dll in PLNT3D\).
+    Different install folder: set AcadDir (MSBuild property or environment variable).
     Private=False (Copy Local off) on purpose: AutoCAD already loads these assemblies; copies next to the plugin
     DLL can be loaded a second time and cause type/cast errors at runtime.
   -->
   <PropertyGroup>
-    <TargetFramework>net8.0-windows</TargetFramework>
+    <PlantVersion Condition="'$(PlantVersion)' == ''">2027</PlantVersion>
+    <TargetFramework Condition="'$(PlantVersion)' == '2027'">net10.0-windows</TargetFramework>
+    <TargetFramework Condition="'$(PlantVersion)' == '2026'">net8.0-windows</TargetFramework>
     <OutputType>Library</OutputType>
     <RootNamespace>WeldPropUtils</RootNamespace>
     <AssemblyName>WeldPropUtils</AssemblyName>
-    <UseWindowsForms>true</UseWindowsForms>
     <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
     <PlatformTarget>x64</PlatformTarget>
     <Nullable>disable</Nullable>
     <ImplicitUsings>disable</ImplicitUsings>
@@ -21,7 +26,7 @@
     <Deterministic>true</Deterministic>
     <!-- Autodesk assemblies are mixed-mode x64 -->
     <ResolveAssemblyWarnOrErrorOnTargetArchitectureMismatch>None</ResolveAssemblyWarnOrErrorOnTargetArchitectureMismatch>
-    <AcadDir Condition="'$(AcadDir)' == ''">C:\Program Files\Autodesk\AutoCAD 2026</AcadDir>
+    <AcadDir Condition="'$(AcadDir)' == ''">C:\Program Files\Autodesk\AutoCAD $(PlantVersion)</AcadDir>
     <!-- Look in the install folder and its PLNT3D subfolder, wherever each DLL lives. -->
     <AssemblySearchPaths>$(AcadDir);$(AcadDir)\PLNT3D;$(AssemblySearchPaths)</AssemblySearchPaths>
   </PropertyGroup>
