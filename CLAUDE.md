@@ -54,6 +54,9 @@ The weld class must have these custom properties, added in Project Setup:
   - `plant3d-multi-version`: 2024/2026/2027 targeting, csproj layout, autoloader bundle
   - `autocad-net-plugin`: AutoCAD .NET basics (commands, transactions, locking, selection, loading)
   - `plant3d-change-review`: the checklist before every commit
+  - `spds-wpf-ui`: SPDS brand themes (dark + light), fonts, logo, WPF hosting in AutoCAD, approved mapping-window layout
+- Planned next feature: a WPF **Weld Property Mapping** window (drag-and-drop mapping of connected-part properties
+  to weld properties, saved as profiles). See `spds-wpf-ui` for the approved design.
 - The SessionStart hook (`.claude/hooks/session-start.sh`) installs `dotnet-sdk-8.0` in cloud sessions.
 
 ## Known issues (from the review, verified against the SDK; not fixed yet)
