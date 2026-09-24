@@ -14,8 +14,10 @@ WeldPropUtils/WeldPropUtils/
   WeldPropertiesHandler.cs  commands (SetWeldProp, SetWeldNumber) + the loop over connectors
   MiscUtilities.cs          Acad (static doc/db/editor/DataLinksManager) + extension helpers
   WeldKey.cs                structPort + Weld model (port normalisation); structPort.Props = all part properties
-  Settings/                 per-project JSON settings (WeldPropSettings model + SettingsStore load/save)
-  WeldPropUtils.csproj      SDK-style, net8.0-windows; references from $(AP3D_SDK_2026)
+  Settings/                 per-project JSON settings (WeldPropSettings/MappingProfile, SettingsStore) + UserPreferences
+  Schema/ProjectSchema.cs   reads part/weld class properties from Project Setup (project database)
+  UI/                       WPF mapping window (MappingWindow) + SPDS dark/light theme (SpdsTheme), built in code
+  WeldPropUtils.csproj      SDK-style, net8.0-windows, WPF + WinForms; references from the AutoCAD 2026 install folder
   Properties/launchSettings.json   F5 starts Plant 3D 2026 (acad.exe /product PLNT3D)
 tools/compile-check/        Linux compile check against the real 2026 SDK DLLs (used by Claude)
 .claude/skills/             domain knowledge for Claude (see below)
@@ -26,6 +28,7 @@ tools/compile-check/        Linux compile check against the real 2026 SDK DLLs (
 | Command         | What it does |
 |-----------------|--------------|
 | `SetWeldProp`   | For every visible `ACPPCONNECTOR` whose `JointType` is `Buttweld`, `Tap` or `Socketweld`, writes `Material1/2`, `OD1/2`, `WallThickness1/2`, `LDS1/2` and `SPEC1/2` onto the weld sub-part row. |
+| `WeldPropMapping` | Opens the SPDS **Weld Property Mapping** window: drag part properties (read from Project Setup) onto weld properties, manage profiles, dark/light theme. **Save** writes the settings file; **Save and update all welds** also runs the mapping on the drawing. |
 | `SetWeldNumber` | Runs `SetWeldProp`, then groups welds that have the same OD, wall thickness and material on both ports. It numbers each group, starting from 11 for butt welds, 51 for taps and 71 for socket welds. Writes the result to `WeldNumber`. |
 
 Both commands read `<Plant project folder>\SPDS\WeldPropUtils.json` (see *Project settings* below).
@@ -50,8 +53,9 @@ The weld class must have these custom properties, added in Project Setup:
 
 ## Build and run (Windows)
 - Visual Studio 2022 (17.8+) with the .NET 8 SDK.
-- Environment variable `AP3D_SDK_2026` = the Plant 3D 2026 SDK root folder (Drive `AP3D_2026_SDK`). Restart Visual Studio after
-  setting it. The csproj takes `inc\AcCoreMgd.dll`, `AcDbMgd.dll`, `AcMgd.dll` and `inc-x64\PnP*.dll` from there (`Private=False`).
+- References come from the installed **AutoCAD Plant 3D 2026**: `C:\Program Files\Autodesk\AutoCAD 2026` and its `PLNT3D`
+  subfolder (MSBuild `AssemblySearchPaths`), with no SDK and no environment variable. For another install folder, set `AcadDir`.
+  `Private=False` (Copy Local off) on purpose: AutoCAD already loads these DLLs, and a second copy causes type-identity errors.
 - Output: `bin\<Config>\net8.0-windows\WeldPropUtils.dll`.
 - F5 starts Plant 3D 2026 (`Properties/launchSettings.json`). Load the DLL with `NETLOAD`. A Plant 3D project must be open.
 
@@ -72,7 +76,8 @@ The weld class must have these custom properties, added in Project Setup:
   - `spds-wpf-ui`: SPDS brand themes (dark + light), fonts, logo, WPF hosting in AutoCAD, approved mapping-window layout
 - Roadmap (agreed with the user):
   1. ✅ Per-project settings file with mapping profiles (the commands already use it).
-  2. WPF **Weld Property Mapping** window that edits those profiles (design: `spds-wpf-ui`), plus the manual "update all welds".
+  2. ✅ (v1, untested in Plant 3D) WPF **Weld Property Mapping** window (`WeldPropMapping`). Still open: weld preview/"pick weld",
+     "apply to selected welds", SPDS logo in the header (waiting for the user's OK to commit it).
   3. Auto-update through events: `DataLinksManager.DataLinkOperationOccurred` only *collects* the affected row IDs
      (no DB work inside the handler), then `Document.CommandEnded` processes them once. Include a re-entrancy guard,
      skip UNDO/REDO/sync/audit, and an on/off switch (`autoUpdate`). Weld numbering stays manual.

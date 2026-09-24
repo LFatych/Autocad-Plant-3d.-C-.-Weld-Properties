@@ -46,7 +46,7 @@ If the Drive tools return "Insufficient scope", ask the user to reconnect Google
 PLANT_REF_2026=$SCRATCH/sdk2026/ref TMPDIR=$SCRATCH \
   tools/compile-check/build.sh
 ```
-- `build.sh` builds the **real** `WeldPropUtils.csproj`. It points `AP3D_SDK_2026` at a symlinked fake SDK folder,
+- `build.sh` builds the **real** `WeldPropUtils.csproj`. It passes `-p:AcadDir=$PLANT_REF_2026` (the csproj resolves references from `AcadDir` and `AcadDir/PLNT3D`),
   skips the WindowsDesktop targets (they don't exist on Linux), and injects the WinForms/WPF reference assemblies through
   `tools/compile-check/LinuxWindowsDesktop.targets`.
 - Any `error` fails the check. Fix it before committing.

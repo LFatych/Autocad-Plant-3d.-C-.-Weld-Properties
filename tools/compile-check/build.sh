@@ -7,15 +7,12 @@ here="$(cd "$(dirname "$0")" && pwd)"
 proj="$here/../../WeldPropUtils/WeldPropUtils/WeldPropUtils.csproj"
 : "${PLANT_REF_2026:?set PLANT_REF_2026 to the folder with the 2026 SDK reference DLLs}"
 work="${TMPDIR:-/tmp}/weldprop-compile-check"
-# The csproj expects the SDK layout <root>/inc/Ac*.dll and <root>/inc-x64/PnP*.dll: fake it with symlinks.
-mkdir -p "$work/sdk2026"
-ln -sfn "$PLANT_REF_2026" "$work/sdk2026/inc"
-ln -sfn "$PLANT_REF_2026" "$work/sdk2026/inc-x64"
-export AP3D_SDK_2026="$work/sdk2026"
+mkdir -p "$work"
 # Linux dotnet has no WindowsDesktop SDK: skip its targets and inject the WinForms/WPF reference assemblies instead.
 dotnet build "$proj" -nologo -v q --no-incremental \
   -p:ImportWindowsDesktopTargets=false \
   -p:CustomAfterMicrosoftCommonTargets="$here/LinuxWindowsDesktop.targets" \
+  -p:AcadDir="$PLANT_REF_2026" \
   -p:BaseOutputPath="$work/bin/" "$@" 2>&1 \
   | grep -E "error|warning|Build succeeded|Error\(s\)|Warning\(s\)" | sed "s|$(cd "$here/../.." && pwd)/||g" | sort -u
 exit "${PIPESTATUS[0]}"

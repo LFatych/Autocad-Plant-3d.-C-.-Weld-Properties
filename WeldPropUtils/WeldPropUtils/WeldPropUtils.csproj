@@ -1,8 +1,10 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <!--
     Plant 3D 2026 plugin (.NET 8).
-    Needs the environment variable AP3D_SDK_2026 = Plant 3D 2026 SDK root folder,
-    containing inc\AcCoreMgd.dll, AcDbMgd.dll, AcMgd.dll and inc-x64\PnP*.dll.
+    References come from the AutoCAD 2026 install folder (Ac*Mgd.dll in the root, Plant 3D PnP*.dll in PLNT3D\).
+    Different install folder: build with -p:AcadDir=... or set an environment variable AcadDir.
+    Private=False (Copy Local off) on purpose: AutoCAD already loads these assemblies; copies next to the plugin
+    DLL can be loaded a second time and cause type/cast errors at runtime.
   -->
   <PropertyGroup>
     <TargetFramework>net8.0-windows</TargetFramework>
@@ -10,6 +12,7 @@
     <RootNamespace>WeldPropUtils</RootNamespace>
     <AssemblyName>WeldPropUtils</AssemblyName>
     <UseWindowsForms>true</UseWindowsForms>
+    <UseWPF>true</UseWPF>
     <PlatformTarget>x64</PlatformTarget>
     <Nullable>disable</Nullable>
     <ImplicitUsings>disable</ImplicitUsings>
@@ -18,18 +21,20 @@
     <Deterministic>true</Deterministic>
     <!-- Autodesk assemblies are mixed-mode x64 -->
     <ResolveAssemblyWarnOrErrorOnTargetArchitectureMismatch>None</ResolveAssemblyWarnOrErrorOnTargetArchitectureMismatch>
-    <PlantSdk>$(AP3D_SDK_2026)</PlantSdk>
+    <AcadDir Condition="'$(AcadDir)' == ''">C:\Program Files\Autodesk\AutoCAD 2026</AcadDir>
+    <!-- Look in the install folder and its PLNT3D subfolder, wherever each DLL lives. -->
+    <AssemblySearchPaths>$(AcadDir);$(AcadDir)\PLNT3D;$(AssemblySearchPaths)</AssemblySearchPaths>
   </PropertyGroup>
 
   <ItemGroup>
-    <Reference Include="AcCoreMgd"><HintPath>$(PlantSdk)\inc\AcCoreMgd.dll</HintPath><Private>False</Private></Reference>
-    <Reference Include="AcDbMgd"><HintPath>$(PlantSdk)\inc\AcDbMgd.dll</HintPath><Private>False</Private></Reference>
-    <Reference Include="AcMgd"><HintPath>$(PlantSdk)\inc\AcMgd.dll</HintPath><Private>False</Private></Reference>
-    <Reference Include="PnP3dObjectsMgd"><HintPath>$(PlantSdk)\inc-x64\PnP3dObjectsMgd.dll</HintPath><Private>False</Private></Reference>
-    <Reference Include="PnP3dProjectPartsMgd"><HintPath>$(PlantSdk)\inc-x64\PnP3dProjectPartsMgd.dll</HintPath><Private>False</Private></Reference>
-    <Reference Include="PnPDataLinks"><HintPath>$(PlantSdk)\inc-x64\PnPDataLinks.dll</HintPath><Private>False</Private></Reference>
-    <Reference Include="PnPDataObjects"><HintPath>$(PlantSdk)\inc-x64\PnPDataObjects.dll</HintPath><Private>False</Private></Reference>
-    <Reference Include="PnPProjectManagerMgd"><HintPath>$(PlantSdk)\inc-x64\PnPProjectManagerMgd.dll</HintPath><Private>False</Private></Reference>
-    <Reference Include="PnPCommonMgd"><HintPath>$(PlantSdk)\inc-x64\PnPCommonMgd.dll</HintPath><Private>False</Private></Reference>
+    <Reference Include="AcCoreMgd" Private="False" />
+    <Reference Include="AcDbMgd" Private="False" />
+    <Reference Include="AcMgd" Private="False" />
+    <Reference Include="PnP3dObjectsMgd" Private="False" />
+    <Reference Include="PnP3dProjectPartsMgd" Private="False" />
+    <Reference Include="PnPDataLinks" Private="False" />
+    <Reference Include="PnPDataObjects" Private="False" />
+    <Reference Include="PnPProjectManagerMgd" Private="False" />
+    <Reference Include="PnPCommonMgd" Private="False" />
   </ItemGroup>
 </Project>

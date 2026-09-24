@@ -86,6 +86,60 @@ namespace WeldPropUtils.Settings
             return new MappingProfile { Name = DefaultName, MirrorSides = true, Mappings = mappings };
         }
 
+        // Side of a weld property from its trailing digit ("Material1" -> 1, "OD2" -> 2); 0 when it has none.
+        public static int SideOf(string target)
+        {
+            if (string.IsNullOrEmpty(target)) return 0;
+            char last = target[target.Length - 1];
+            return last == '1' ? 1 : last == '2' ? 2 : 0;
+        }
+
+        // The same weld property on the other side ("Material1" <-> "Material2"); null when it has no side digit.
+        public static string Counterpart(string target)
+        {
+            int side = SideOf(target);
+            if (side == 0) return null;
+            return target.Substring(0, target.Length - 1) + (side == 1 ? "2" : "1");
+        }
+
+        public string GetSource(string target)
+        {
+            PropertyMapping mapping = Mappings.FirstOrDefault(m => m.Target == target);
+            return mapping == null ? null : mapping.Source;
+        }
+
+        // Maps 'target' to 'source'; with 'mirror' the counterpart on the other side gets the same source.
+        public void Assign(string target, string source, bool mirror)
+        {
+            SetOne(target, source);
+            string other = mirror ? Counterpart(target) : null;
+            if (other != null) SetOne(other, source);
+        }
+
+        public void Unassign(string target, bool mirror)
+        {
+            Mappings.RemoveAll(m => m.Target == target);
+            string other = mirror ? Counterpart(target) : null;
+            if (other != null) Mappings.RemoveAll(m => m.Target == other);
+        }
+
+        private void SetOne(string target, string source)
+        {
+            Mappings.RemoveAll(m => m.Target == target);
+            int side = SideOf(target);
+            Mappings.Add(new PropertyMapping(target, side == 0 ? 1 : side, source));
+        }
+
+        public MappingProfile Clone(string newName)
+        {
+            return new MappingProfile
+            {
+                Name = newName,
+                MirrorSides = MirrorSides,
+                Mappings = Mappings.Select(m => new PropertyMapping(m.Target, m.Side, m.Source)).ToList()
+            };
+        }
+
         public void Normalize()
         {
             if (string.IsNullOrEmpty(Name)) Name = DefaultName;

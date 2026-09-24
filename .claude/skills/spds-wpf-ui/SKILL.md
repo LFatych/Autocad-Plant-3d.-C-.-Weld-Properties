@@ -76,7 +76,8 @@ document context.
 
 ## Project/build notes
 - Add `<UseWPF>true</UseWPF>` to the SDK-style csproj. XAML files are picked up as `Page` items automatically.
-- **XAML cannot be compile-checked on Linux.** The WPF markup compiler only ships with the Windows SDK. So:
+- **The UI is built in C# code (UI/MappingWindow.cs, UI/SpdsTheme.cs), not XAML**, so the compile check covers it.
+  Keep it that way unless the user wants XAML. Reason: **XAML cannot be compile-checked on Linux.** The WPF markup compiler only ships with the Windows SDK. So:
   - keep the logic (the mapping model, profile load/save, reading the schema) in plain C# classes, which `tools/compile-check` does verify
   - keep XAML declarative (bindings plus a thin code-behind)
   - tell the user that the XAML is only verified by their Visual Studio build.
