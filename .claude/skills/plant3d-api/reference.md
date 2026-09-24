@@ -445,13 +445,19 @@ abstract void CancelEdit();
 abstract void EndEdit();
 ```
 
-## PlantInstance.PlantApplication / PlantProject (PnPProjectManagerMgd.dll)
+## PlantInstance.PlantApplication / ProjectManager.PlantProject (PnPProjectManagerMgd.dll)
 
 ```
+namespace Autodesk.ProcessPower.PlantInstance
 <class> public class PlantApplication
 static PlantProject CurrentProject            // null when no project is open
+
+namespace Autodesk.ProcessPower.ProjectManager   // NOT PlantInstance
 <class> public class PlantProject
 ProjectPartCollection ProjectParts            // indexer: Project this[string strName]  ("Piping", "PnId", "Ortho", "Iso")
+string Name
+string FileName                               // full path of Project.xml
+string ProjectFolderPath                      // Path.GetDirectoryName(FileName): the project root folder
 ```
 
 ## ProjectManager.Project — subset

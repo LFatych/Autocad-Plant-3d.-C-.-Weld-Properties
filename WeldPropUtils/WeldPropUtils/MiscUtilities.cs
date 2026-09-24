@@ -130,7 +130,8 @@ namespace WeldPropUtils
                 Lds = connPartProps.FirstOrDefault(p => p.Key == "PartSizeLongDesc").Value,
                 Spec = connPartProps.FirstOrDefault(p => p.Key == "Spec").Value,
                 WallThickness = connPartProps.FirstOrDefault(p => p.Key == "WallThickness").Value,
-                OD = connPartProps.FirstOrDefault(p => p.Key == "MatchingPipeOd").Value
+                OD = connPartProps.FirstOrDefault(p => p.Key == "MatchingPipeOd").Value,
+                Props = connPartProps
             };
         }
 

@@ -14,6 +14,8 @@ namespace WeldPropUtils
         public string Material { get; set; }
         public string Spec { get; set; }
         public string Lds { get; set; }
+        // All non-empty properties of the connected part, read by the property mapping (null if the port is unconnected).
+        public Dictionary<string, string> Props { get; set; }
 
         public structPort(string od, string wallThickness,string material, string spec, string lds)
         {
@@ -22,6 +24,7 @@ namespace WeldPropUtils
             Material = material;
             Spec = spec;
             Lds = lds;
+            Props = null;
         }
     }
 

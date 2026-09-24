@@ -13,7 +13,8 @@ WeldPropUtils/WeldPropUtils.sln
 WeldPropUtils/WeldPropUtils/
   WeldPropertiesHandler.cs  commands (SetWeldProp, SetWeldNumber) + the loop over connectors
   MiscUtilities.cs          Acad (static doc/db/editor/DataLinksManager) + extension helpers
-  WeldKey.cs                structPort + Weld model (port normalisation)
+  WeldKey.cs                structPort + Weld model (port normalisation); structPort.Props = all part properties
+  Settings/                 per-project JSON settings (WeldPropSettings model + SettingsStore load/save)
   WeldPropUtils.csproj      old-style csproj, net48; references come from $(AP3D_SDK_2024)
 tools/compile-check/        Linux compile check against the real 2024 + 2026 SDK DLLs (used by Claude)
 .claude/skills/             domain knowledge for Claude (see below)
@@ -26,11 +27,25 @@ tools/compile-check/        Linux compile check against the real 2024 + 2026 SDK
 | `SetWeldProp`   | For every visible `ACPPCONNECTOR` whose `JointType` is `Buttweld`, `Tap` or `Socketweld`, writes `Material1/2`, `OD1/2`, `WallThickness1/2`, `LDS1/2` and `SPEC1/2` onto the weld sub-part row. |
 | `SetWeldNumber` | Runs `SetWeldProp`, then groups welds that have the same OD, wall thickness and material on both ports. It numbers each group, starting from 11 for butt welds, 51 for taps and 71 for socket welds. Writes the result to `WeldNumber`. |
 
+Both commands read `<Plant project folder>\SPDS\WeldPropUtils.json` (see *Project settings* below).
+
 Port 1 is always the "larger" side (`Weld.NormalizePorts`: OD, then wall thickness, then material).
 
 ### Project prerequisites (in the Plant 3D project, not in code)
 The weld class must have these custom properties, added in Project Setup:
 `Material1, OD1, WallThickness1, LDS1, SPEC1, Material2, OD2, WallThickness2, LDS2, SPEC2, WeldNumber`.
+
+### Project settings (`<project>\SPDS\WeldPropUtils.json`)
+- Location: `PlantProject.ProjectFolderPath` (the folder containing `Project.xml`) + `SPDS\WeldPropUtils.json`.
+  Each Plant project has its own file. Other SPDS tools should add their own files to the same `SPDS` folder.
+- Created with the defaults (the same behaviour as the original hard-coded plugin) the first time a command runs.
+  A file that can't be read is left untouched and the defaults are used for that run, with a message on the command line.
+- Content: `schemaVersion`, `activeProfile`, `autoUpdate` (reserved for step 2), `numbering` (start numbers for
+  Buttweld/Tap/Socketweld), and `profiles[]`, each with `name`, `mirrorSides` and `mappings[]` of `{target, side (1|2), source}`.
+- Serializer: `DataContractJsonSerializer`, which is built into net48 and net8. Don't add Newtonsoft.Json, because AutoCAD loads its own copy.
+  When adding a member: `[DataMember(Name = "camelCase")]`, a default in `Normalize()`, and raise `schemaVersion` if old
+  files need converting.
+- Per-user preferences, such as the UI theme, don't belong here. They go to `%AppData%\SPDS\WeldPropUtils\`.
 
 ## Build and run (Windows)
 - Visual Studio 2022 with the .NET Framework 4.8 targeting pack.
@@ -55,8 +70,12 @@ The weld class must have these custom properties, added in Project Setup:
   - `autocad-net-plugin`: AutoCAD .NET basics (commands, transactions, locking, selection, loading)
   - `plant3d-change-review`: the checklist before every commit
   - `spds-wpf-ui`: SPDS brand themes (dark + light), fonts, logo, WPF hosting in AutoCAD, approved mapping-window layout
-- Planned next feature: a WPF **Weld Property Mapping** window (drag-and-drop mapping of connected-part properties
-  to weld properties, saved as profiles). See `spds-wpf-ui` for the approved design.
+- Roadmap (agreed with the user):
+  1. ✅ Per-project settings file with mapping profiles (the commands already use it).
+  2. WPF **Weld Property Mapping** window that edits those profiles (design: `spds-wpf-ui`), plus the manual "update all welds".
+  3. Auto-update through events: `DataLinksManager.DataLinkOperationOccurred` only *collects* the affected row IDs
+     (no DB work inside the handler), then `Document.CommandEnded` processes them once. Include a re-entrancy guard,
+     skip UNDO/REDO/sync/audit, and an on/off switch (`autoUpdate`). Weld numbering stays manual.
 - The SessionStart hook (`.claude/hooks/session-start.sh`) installs `dotnet-sdk-8.0` in cloud sessions.
 
 ## Known issues (from the review, verified against the SDK; not fixed yet)

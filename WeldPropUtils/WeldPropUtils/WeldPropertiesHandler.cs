@@ -10,6 +10,8 @@ using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Linq;
 
+using WeldPropUtils.Settings;
+
 namespace WeldPropUtils
 {
     public class WeldPropertiesHandler
@@ -55,34 +57,58 @@ namespace WeldPropUtils
 
         }
 
-        private static void SetWeldProp(Connector conn, Weld weld)
+        // Writes each mapped weld property from the connected part on its side; a property missing on the part is written as null.
+        private static void SetWeldProp(Connector conn, Weld weld, MappingProfile profile)
         {
-            StringCollection pNames = new StringCollection
+            StringCollection pNames = new StringCollection();
+            StringCollection pVals = new StringCollection();
+            foreach (PropertyMapping mapping in profile.Mappings)
             {
-                "Material1", "OD1", "WallThickness1", "LDS1", "SPEC1",
-                "Material2", "OD2", "WallThickness2", "LDS2", "SPEC2"
-            };
-            StringCollection pVals = new StringCollection
-            {
-                weld.Port1.Material, weld.Port1.OD, weld.Port1.WallThickness, weld.Port1.Lds, weld.Port1.Spec,
-                weld.Port2.Material, weld.Port2.OD, weld.Port2.WallThickness, weld.Port2.Lds, weld.Port2.Spec
-            };
+                Dictionary<string, string> partProps = mapping.Side == 1 ? weld.Port1.Props : weld.Port2.Props;
+                string value = null;
+                if (partProps != null) partProps.TryGetValue(mapping.Source, out value);
+                pNames.Add(mapping.Target);
+                pVals.Add(value);
+            }
+            if (pNames.Count == 0) return;
             int subPartRowID = conn.FindWeldRowId();
             Acad.dlm.SetProperties(subPartRowID, pNames, pVals);
         }
+
+        // Null (with a message) when no Plant project is open.
+        private static WeldPropSettings LoadSettings()
+        {
+            string path = SettingsStore.GetSettingsPath();
+            if (path == null)
+            {
+                Acad.ed.WriteMessage("\nNo Plant 3D project is open.");
+                return null;
+            }
+            string message;
+            WeldPropSettings settings = SettingsStore.Load(path, out message);
+            if (message != null) Acad.ed.WriteMessage("\n" + message);
+            return settings;
+        }
+
         [CommandMethod ("SetWeldProp")]
         public static void SetWeldProp()
         {
-            LoopThroughWelds((connector, Weld) => { SetWeldProp(connector, Weld); });
+            WeldPropSettings settings = LoadSettings();
+            if (settings == null) return;
+            MappingProfile profile = settings.GetActiveProfile();
+            LoopThroughWelds((connector, weld) => { SetWeldProp(connector, weld, profile); });
         }
         [CommandMethod ("SetWeldNumber")]
         public static void WeldNumerAssign()
         {
-            int bw = 11;
-            int tw = 51;
-            int sw = 71;
+            WeldPropSettings settings = LoadSettings();
+            if (settings == null) return;
+            MappingProfile profile = settings.GetActiveProfile();
+            int bw = settings.Numbering.ButtweldStart;
+            int tw = settings.Numbering.TapStart;
+            int sw = settings.Numbering.SocketweldStart;
 
-            LoopThroughWelds(SetWeldProp, (weldList) =>
+            LoopThroughWelds((connector, weld) => { SetWeldProp(connector, weld, profile); }, (weldList) =>
             {
                 List<Weld> buttWelds = weldList.Where(w => w.WeldType == "Buttweld").ToList();
                 List<Weld> tapWelds = weldList.Where(w => w.WeldType == "Tap").ToList();
