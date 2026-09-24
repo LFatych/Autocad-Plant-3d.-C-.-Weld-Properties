@@ -80,6 +80,28 @@ namespace WeldPropUtils
             Acad.dlm.SetProperties(subPartRowID, pNames, pVals);
         }
 
+        // The profile without mappings to weld properties that the weld classes in Project Setup don't have
+        // (writing one of those would fail for every weld). Skipped targets are reported once.
+        private static MappingProfile WritableProfile(MappingProfile profile)
+        {
+            HashSet<string> weldProps;
+            try
+            {
+                weldProps = new HashSet<string>(ProjectSchema.ReadWeldProperties(Acad.dlm), StringComparer.Ordinal);
+            }
+            catch (System.Exception)
+            {
+                return profile;
+            }
+            if (weldProps.Count == 0) return profile;
+            List<string> missing = profile.Mappings.Where(m => !weldProps.Contains(m.Target)).Select(m => m.Target).ToList();
+            if (missing.Count == 0) return profile;
+            Acad.ed.WriteMessage("\nSkipped weld properties that are not in Project Setup: " + string.Join(", ", missing));
+            MappingProfile writable = profile.Clone(profile.Name);
+            writable.Mappings.RemoveAll(m => !weldProps.Contains(m.Target));
+            return writable;
+        }
+
         // Null (with a message) when no Plant project is open.
         private static WeldPropSettings LoadSettings()
         {
@@ -108,7 +130,7 @@ namespace WeldPropUtils
             try
             {
                 sources = ProjectSchema.ReadSourceProperties(Acad.dlm);
-                weldTargets = ProjectSchema.ReadWeldTargets(Acad.dlm);
+                weldTargets = ProjectSchema.ReadWeldProperties(Acad.dlm);
             }
             catch (System.Exception ex)
             {
@@ -138,7 +160,7 @@ namespace WeldPropUtils
 
             if (window.UpdateWeldsRequested)
             {
-                MappingProfile profile = settings.GetActiveProfile();
+                MappingProfile profile = WritableProfile(settings.GetActiveProfile());
                 LoopThroughWelds((connector, weld) => { SetWeldProp(connector, weld, profile); });
                 Acad.ed.WriteMessage("\nWeld properties updated with profile \"" + profile.Name + "\".");
             }
@@ -162,7 +184,7 @@ namespace WeldPropUtils
         {
             WeldPropSettings settings = LoadSettings();
             if (settings == null) return;
-            MappingProfile profile = settings.GetActiveProfile();
+            MappingProfile profile = WritableProfile(settings.GetActiveProfile());
             LoopThroughWelds((connector, weld) => { SetWeldProp(connector, weld, profile); });
         }
         [CommandMethod ("SetWeldNumber")]
@@ -170,7 +192,7 @@ namespace WeldPropUtils
         {
             WeldPropSettings settings = LoadSettings();
             if (settings == null) return;
-            MappingProfile profile = settings.GetActiveProfile();
+            MappingProfile profile = WritableProfile(settings.GetActiveProfile());
             int bw = settings.Numbering.ButtweldStart;
             int tw = settings.Numbering.TapStart;
             int sw = settings.Numbering.SocketweldStart;

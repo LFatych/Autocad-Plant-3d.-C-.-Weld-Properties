@@ -1,7 +1,7 @@
 ﻿<!--
   SPDS control styles. Colours always come from the active theme (SpdsDark.xaml / SpdsLight.xaml)
   through DynamicResource, so every style works in both themes.
-  Keyed styles: Spds.Button, Spds.Button.Chrome, Spds.Button.Primary, Spds.Button.Icon, Spds.Pill,
+  Keyed styles: Spds.Button, Spds.Button.Chrome, Spds.Button.Primary, Spds.Button.Icon, Spds.Button.Pick, Spds.Pill,
   Spds.TextBox, Spds.CheckBox, Spds.Card, Spds.Text.*. Implicit styles: PropertyChip, DropZone.
 -->
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -111,6 +111,18 @@
         </Style.Triggers>
     </Style>
 
+    <!-- Weld property in the "+ Add weld property" picker. -->
+    <Style x:Key="Spds.Button.Pick" TargetType="ButtonBase" BasedOn="{StaticResource Spds.Button}">
+        <Setter Property="Height" Value="26" />
+        <Setter Property="MinWidth" Value="0" />
+        <Setter Property="Padding" Value="8,0" />
+        <Setter Property="Margin" Value="0,0,6,6" />
+        <Setter Property="FontFamily" Value="{StaticResource Spds.Font.Mono}" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="Background" Value="{DynamicResource Spds.ChipBg}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Spds.ChipBorder}" />
+    </Style>
+
     <!-- ===== Inputs ===== -->
     <Style x:Key="Spds.TextBox" TargetType="TextBox">
         <Setter Property="Background" Value="{DynamicResource Spds.FieldBg}" />
@@ -197,6 +209,10 @@
                             <Setter Property="BorderBrush" Value="{DynamicResource Spds.DropEmptyBorder}" />
                             <Setter TargetName="Placeholder" Property="Visibility" Value="Visible" />
                             <Setter TargetName="Mapped" Property="Visibility" Value="Collapsed" />
+                        </Trigger>
+                        <Trigger Property="IsMissing" Value="True">
+                            <Setter Property="BorderBrush" Value="{DynamicResource Spds.Error}" />
+                            <Setter Property="BorderThickness" Value="2" />
                         </Trigger>
                         <Trigger Property="IsDragOver" Value="True">
                             <Setter Property="Background" Value="{DynamicResource Spds.DropOverBg}" />

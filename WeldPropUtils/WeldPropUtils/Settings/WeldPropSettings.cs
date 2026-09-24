@@ -86,48 +86,27 @@ namespace WeldPropUtils.Settings
             return new MappingProfile { Name = DefaultName, MirrorSides = true, Mappings = mappings };
         }
 
-        // Side of a weld property from its trailing digit ("Material1" -> 1, "OD2" -> 2); 0 when it has none.
-        public static int SideOf(string target)
+        public PropertyMapping Find(string target)
         {
-            if (string.IsNullOrEmpty(target)) return 0;
-            char last = target[target.Length - 1];
-            return last == '1' ? 1 : last == '2' ? 2 : 0;
-        }
-
-        // The same weld property on the other side ("Material1" <-> "Material2"); null when it has no side digit.
-        public static string Counterpart(string target)
-        {
-            int side = SideOf(target);
-            if (side == 0) return null;
-            return target.Substring(0, target.Length - 1) + (side == 1 ? "2" : "1");
+            return Mappings.FirstOrDefault(m => m.Target == target);
         }
 
         public string GetSource(string target)
         {
-            PropertyMapping mapping = Mappings.FirstOrDefault(m => m.Target == target);
+            PropertyMapping mapping = Find(target);
             return mapping == null ? null : mapping.Source;
         }
 
-        // Maps 'target' to 'source'; with 'mirror' the counterpart on the other side gets the same source.
-        public void Assign(string target, string source, bool mirror)
-        {
-            SetOne(target, source);
-            string other = mirror ? Counterpart(target) : null;
-            if (other != null) SetOne(other, source);
-        }
-
-        public void Unassign(string target, bool mirror)
+        // Maps weld property 'target' to part property 'source' of the given side (1 or 2).
+        public void Assign(string target, int side, string source)
         {
             Mappings.RemoveAll(m => m.Target == target);
-            string other = mirror ? Counterpart(target) : null;
-            if (other != null) Mappings.RemoveAll(m => m.Target == other);
+            Mappings.Add(new PropertyMapping(target, side == 2 ? 2 : 1, source));
         }
 
-        private void SetOne(string target, string source)
+        public void Unassign(string target)
         {
             Mappings.RemoveAll(m => m.Target == target);
-            int side = SideOf(target);
-            Mappings.Add(new PropertyMapping(target, side == 0 ? 1 : side, source));
         }
 
         public MappingProfile Clone(string newName)
@@ -150,10 +129,40 @@ namespace WeldPropUtils.Settings
         }
     }
 
+    // Pairs weld properties of side 1 and side 2 by name: the same name with one '1'/'2' digit swapped
+    // ("Material1" <-> "Material2", "Port1_Material" <-> "Port2_Material").
+    public static class WeldSides
+    {
+        // The counterpart that exists in 'known' (the weld properties from Project Setup); null when there is none.
+        // Without 'known' only a trailing digit is swapped.
+        public static string Counterpart(string target, ICollection<string> known)
+        {
+            if (string.IsNullOrEmpty(target)) return null;
+            if (known == null || known.Count == 0)
+            {
+                char last = target[target.Length - 1];
+                return last == '1' || last == '2' ? target.Substring(0, target.Length - 1) + Swap(last) : null;
+            }
+            for (int i = 0; i < target.Length; i++)
+            {
+                char ch = target[i];
+                if (ch != '1' && ch != '2') continue;
+                string other = target.Substring(0, i) + Swap(ch) + target.Substring(i + 1);
+                if (known.Contains(other)) return other;
+            }
+            return null;
+        }
+
+        private static char Swap(char digit)
+        {
+            return digit == '1' ? '2' : '1';
+        }
+    }
+
     [DataContract]
     public class PropertyMapping
     {
-        // Weld property written (e.g. "Material1").
+        // Weld property written (e.g. "Material1", "Port1_Material"); any property of the weld class.
         [DataMember(Name = "target", Order = 0)]
         public string Target { get; set; }
 

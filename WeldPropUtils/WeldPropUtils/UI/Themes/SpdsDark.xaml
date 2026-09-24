@@ -41,6 +41,7 @@
     <SolidColorBrush x:Key="Spds.NoteBg" Color="#2C3740" />
     <SolidColorBrush x:Key="Spds.NoteBorder" Color="#465460" />
     <SolidColorBrush x:Key="Spds.NoteText" Color="#DCE2E5" />
+    <SolidColorBrush x:Key="Spds.Error" Color="#FF7B7B" />
     <SolidColorBrush x:Key="Spds.Unmapped" Color="#F2A07B" />
     <SolidColorBrush x:Key="Spds.RowLine" Color="#323C44" />
 </ResourceDictionary>

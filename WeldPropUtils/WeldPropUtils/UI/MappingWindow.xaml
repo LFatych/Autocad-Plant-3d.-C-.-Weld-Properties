@@ -21,29 +21,88 @@
                 <ResourceDictionary Source="/WeldPropUtils;component/UI/Themes/SpdsStyles.xaml" />
             </ResourceDictionary.MergedDictionaries>
 
-            <!-- One weld field row: name | drop zone | clear -->
+            <!-- One weld field row: name | drop zone | clear. Red when the weld property is not in Project Setup. -->
             <DataTemplate x:Key="TargetRowTemplate">
                 <Grid Margin="0,0,0,8">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="170" />
+                        <ColumnDefinition Width="190" />
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="40" />
                     </Grid.ColumnDefinitions>
-                    <StackPanel VerticalAlignment="Center">
-                        <TextBlock Text="{Binding Target}" Style="{StaticResource Spds.Text.Mono}" />
-                        <TextBlock Text="not in Project Setup" FontSize="11" Foreground="{DynamicResource Spds.Unmapped}"
-                                   Visibility="{Binding MissingInSetup, Converter={StaticResource Spds.BoolToVisibility}}" />
+                    <StackPanel VerticalAlignment="Center" Margin="0,0,8,0">
+                        <TextBlock x:Name="TargetText" Text="{Binding Target}" Style="{StaticResource Spds.Text.Mono}"
+                                   TextTrimming="CharacterEllipsis" ToolTip="{Binding Target}" />
+                        <TextBlock x:Name="MissingText" Text="not in Project Setup" FontSize="11" Foreground="{DynamicResource Spds.Error}"
+                                   Visibility="Collapsed" />
                     </StackPanel>
                     <c:DropZone Grid.Column="1"
                                 TargetName="{Binding Target}"
                                 SourceName="{Binding Source}"
+                                IsMissing="{Binding MissingInSetup}"
                                 DropCommand="{Binding DropCommand}"
                                 Command="{Binding ActivateCommand}"
                                 AutomationProperties.Name="{Binding Target}" />
                     <Button Grid.Column="2" Content="×" Style="{StaticResource Spds.Button.Icon}" Margin="8,0,0,0"
-                            Command="{Binding ClearCommand}" ToolTip="Clear this field"
+                            Command="{Binding ClearCommand}" ToolTip="{Binding ClearToolTip}"
                             AutomationProperties.Name="{Binding Target, StringFormat='Clear {0}'}" />
                 </Grid>
+                <DataTemplate.Triggers>
+                    <DataTrigger Binding="{Binding MissingInSetup}" Value="True">
+                        <Setter TargetName="TargetText" Property="Foreground" Value="{DynamicResource Spds.Error}" />
+                        <Setter TargetName="MissingText" Property="Visibility" Value="Visible" />
+                    </DataTrigger>
+                </DataTemplate.Triggers>
+            </DataTemplate>
+
+            <!-- A side card (SideViewModel): rows + "+ Add weld property" picker with the weld class properties from Project Setup. -->
+            <DataTemplate x:Key="SideCardTemplate">
+                <Border Style="{StaticResource Spds.Card}" Margin="0,0,0,14">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                            <Border x:Name="Dot" Width="10" Height="10" CornerRadius="5" BorderThickness="1" Margin="0,0,10,0" VerticalAlignment="Center"
+                                    Background="{DynamicResource Spds.Side1}" BorderBrush="{DynamicResource Spds.Side1Ring}" />
+                            <TextBlock Text="{Binding Title}" Style="{StaticResource Spds.Text.Heading}" Margin="0,0,10,0" />
+                            <TextBlock Text="{Binding Description}" Style="{StaticResource Spds.Text.Muted}" VerticalAlignment="Center" />
+                        </StackPanel>
+
+                        <ItemsControl ItemsSource="{Binding Rows}" ItemTemplate="{StaticResource TargetRowTemplate}" />
+
+                        <ToggleButton Content="+ Add weld property" IsChecked="{Binding IsPickerOpen}" HorizontalAlignment="Left"
+                                      Style="{StaticResource Spds.Button}" Margin="0,4,0,0"
+                                      ToolTip="Add a property of the weld class (from Project Setup) to map on this side" />
+
+                        <Border Padding="10" Margin="0,8,0,0" CornerRadius="6" BorderThickness="1"
+                                Background="{DynamicResource Spds.PanelBg}" BorderBrush="{DynamicResource Spds.Border}"
+                                Visibility="{Binding IsPickerOpen, Converter={StaticResource Spds.BoolToVisibility}}">
+                            <StackPanel>
+                                <TextBox Text="{Binding PickerSearch, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource Spds.TextBox}"
+                                         Margin="0,0,0,8" AutomationProperties.Name="Search weld properties" ToolTip="Search weld properties" />
+                                <ScrollViewer MaxHeight="180" VerticalScrollBarVisibility="Auto">
+                                    <ItemsControl ItemsSource="{Binding Options}">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <WrapPanel />
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Button Content="{Binding Name}" Command="{Binding AddCommand}" Style="{StaticResource Spds.Button.Pick}" />
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
+                                <TextBlock Text="No other weld properties found in Project Setup." Style="{StaticResource Spds.Text.Faint}"
+                                           Visibility="{Binding HasNoOptions, Converter={StaticResource Spds.BoolToVisibility}}" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Border>
+                <DataTemplate.Triggers>
+                    <DataTrigger Binding="{Binding Side}" Value="2">
+                        <Setter TargetName="Dot" Property="Background" Value="{DynamicResource Spds.Side2}" />
+                        <Setter TargetName="Dot" Property="BorderBrush" Value="{DynamicResource Spds.Side2}" />
+                    </DataTrigger>
+                </DataTemplate.Triggers>
             </DataTemplate>
 
             <DataTemplate x:Key="PillTemplate">
@@ -121,35 +180,18 @@
                 <StackPanel Margin="20,16">
                     <DockPanel Margin="0,0,0,14">
                         <Button DockPanel.Dock="Right" Content="Clear all" Command="{Binding ClearAllCommand}" Style="{StaticResource Spds.Button}" />
+                        <Button DockPanel.Dock="Right" Content="Remove missing" Command="{Binding RemoveMissingCommand}"
+                                Style="{StaticResource Spds.Button}" Margin="8,0,0,0" Foreground="{DynamicResource Spds.Error}"
+                                BorderBrush="{DynamicResource Spds.Error}" ToolTip="Remove the rows whose weld property is not in Project Setup"
+                                Visibility="{Binding HasMissing, Converter={StaticResource Spds.BoolToVisibility}}" />
                         <Button DockPanel.Dock="Right" Content="Reset to default" Command="{Binding ResetCommand}"
                                 Style="{StaticResource Spds.Button}" Margin="8,0" />
                         <CheckBox Content="Same mapping for both sides" IsChecked="{Binding MirrorSides}"
                                   Style="{StaticResource Spds.CheckBox}" VerticalAlignment="Center" />
                     </DockPanel>
 
-                    <Border Style="{StaticResource Spds.Card}" Margin="0,0,0,14">
-                        <StackPanel>
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
-                                <Border Width="10" Height="10" CornerRadius="5" BorderThickness="1" Margin="0,0,10,0" VerticalAlignment="Center"
-                                        Background="{DynamicResource Spds.Side1}" BorderBrush="{DynamicResource Spds.Side1Ring}" />
-                                <TextBlock Text="Side 1 · larger part" Style="{StaticResource Spds.Text.Heading}" Margin="0,0,10,0" />
-                                <TextBlock Text="port with bigger OD, then wall thickness" Style="{StaticResource Spds.Text.Muted}" VerticalAlignment="Center" />
-                            </StackPanel>
-                            <ItemsControl ItemsSource="{Binding Side1Rows}" ItemTemplate="{StaticResource TargetRowTemplate}" />
-                        </StackPanel>
-                    </Border>
-
-                    <Border Style="{StaticResource Spds.Card}" Margin="0,0,0,14">
-                        <StackPanel>
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
-                                <Border Width="10" Height="10" CornerRadius="5" BorderThickness="1" Margin="0,0,10,0" VerticalAlignment="Center"
-                                        Background="{DynamicResource Spds.Side2}" BorderBrush="{DynamicResource Spds.Side2}" />
-                                <TextBlock Text="Side 2 · smaller part" Style="{StaticResource Spds.Text.Heading}" Margin="0,0,10,0" />
-                                <TextBlock Text="the other connected part" Style="{StaticResource Spds.Text.Muted}" VerticalAlignment="Center" />
-                            </StackPanel>
-                            <ItemsControl ItemsSource="{Binding Side2Rows}" ItemTemplate="{StaticResource TargetRowTemplate}" />
-                        </StackPanel>
-                    </Border>
+                    <ContentControl Content="{Binding Side1}" ContentTemplate="{StaticResource SideCardTemplate}" Focusable="False" />
+                    <ContentControl Content="{Binding Side2}" ContentTemplate="{StaticResource SideCardTemplate}" Focusable="False" />
 
                     <TextBlock Text="WeldNumber is set by the numbering rules (SetWeldNumber), not mapped here."
                                Style="{StaticResource Spds.Text.Muted}" />
@@ -191,14 +233,20 @@
                                         <Border Padding="10,6" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource Spds.RowLine}">
                                             <Grid>
                                                 <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="120" />
+                                                    <ColumnDefinition Width="130" />
                                                     <ColumnDefinition Width="*" />
                                                 </Grid.ColumnDefinitions>
-                                                <TextBlock Text="{Binding Target}" Style="{StaticResource Spds.Text.Mono}" FontSize="12" />
+                                                <TextBlock x:Name="SummaryTarget" Text="{Binding Target}" Style="{StaticResource Spds.Text.Mono}"
+                                                           FontSize="12" TextTrimming="CharacterEllipsis" ToolTip="{Binding Target}" />
                                                 <TextBlock Grid.Column="1" Text="{Binding Source}" FontSize="12" TextWrapping="Wrap"
                                                            Foreground="{DynamicResource Spds.Text}" />
                                             </Grid>
                                         </Border>
+                                        <DataTemplate.Triggers>
+                                            <DataTrigger Binding="{Binding MissingInSetup}" Value="True">
+                                                <Setter TargetName="SummaryTarget" Property="Foreground" Value="{DynamicResource Spds.Error}" />
+                                            </DataTrigger>
+                                        </DataTemplate.Triggers>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>

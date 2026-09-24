@@ -3,7 +3,6 @@ using Autodesk.ProcessPower.DataObjects;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using WeldPropUtils.Settings;
 
 namespace WeldPropUtils.Schema
 {
@@ -52,15 +51,11 @@ namespace WeldPropUtils.Schema
             return byName.Values.OrderBy(p => p.Name, StringComparer.OrdinalIgnoreCase).ToList();
         }
 
-        // Weld properties that come in side pairs (Material1 + Material2, ...): the mapping targets.
-        public static List<string> ReadWeldTargets(DataLinksManager dlm)
+        // All non-system properties of the weld classes (the possible mapping targets), sorted by name.
+        public static List<string> ReadWeldProperties(DataLinksManager dlm)
         {
             PnPDatabase db = dlm.GetPnPDatabase();
-            var columns = new HashSet<string>(ReadColumns(dlm, db, WeldTables), StringComparer.Ordinal);
-            return columns
-                .Where(c => MappingProfile.SideOf(c) != 0 && columns.Contains(MappingProfile.Counterpart(c)))
-                .OrderBy(c => c, StringComparer.OrdinalIgnoreCase)
-                .ToList();
+            return ReadColumns(dlm, db, WeldTables).OrderBy(c => c, StringComparer.OrdinalIgnoreCase).ToList();
         }
 
         private static IEnumerable<string> ReadColumns(DataLinksManager dlm, PnPDatabase db, IEnumerable<string> tables)

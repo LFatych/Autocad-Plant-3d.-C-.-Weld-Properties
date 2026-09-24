@@ -6,7 +6,7 @@ namespace WeldPropUtils.UI.Controls
 {
     // A weld property field that accepts a dropped PropertyChip. On drop it runs DropCommand with the
     // dropped property name. Clicking it runs Command (assign the selected property).
-    // IsMapped / IsDragOver drive the look (implicit style for DropZone in UI/Themes/SpdsStyles.xaml).
+    // IsMapped / IsMissing / IsDragOver drive the look (implicit style for DropZone in UI/Themes/SpdsStyles.xaml).
     public class DropZone : Button
     {
         public static readonly DependencyProperty TargetNameProperty =
@@ -18,6 +18,9 @@ namespace WeldPropUtils.UI.Controls
 
         public static readonly DependencyProperty IsMappedProperty =
             DependencyProperty.Register(nameof(IsMapped), typeof(bool), typeof(DropZone));
+
+        public static readonly DependencyProperty IsMissingProperty =
+            DependencyProperty.Register(nameof(IsMissing), typeof(bool), typeof(DropZone));
 
         public static readonly DependencyProperty IsDragOverProperty =
             DependencyProperty.Register(nameof(IsDragOver), typeof(bool), typeof(DropZone));
@@ -48,6 +51,13 @@ namespace WeldPropUtils.UI.Controls
         {
             get => (bool)GetValue(IsMappedProperty);
             private set => SetValue(IsMappedProperty, value);
+        }
+
+        // The weld property is not in the weld classes of Project Setup (shown red; skipped when welds are updated).
+        public bool IsMissing
+        {
+            get => (bool)GetValue(IsMissingProperty);
+            set => SetValue(IsMissingProperty, value);
         }
 
         public bool IsDragOver

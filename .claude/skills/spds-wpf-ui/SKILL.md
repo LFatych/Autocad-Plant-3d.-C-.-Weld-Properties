@@ -48,6 +48,7 @@ Decision (user, 2026-09-24): **two themes, dark (default) and light, switchable 
 | PrimaryBg / PrimaryText | `#FDD541` / `#1F262B` | `#FDD541` / `#2E373E` (border `#E0B21F`) | main action button |
 | NoteBg / NoteBorder / NoteText / NoteIcon | `#2C3740` / `#465460` / `#DCE2E5` / `#9FB3C2` | `#FFF6D6` / `#EBCF6A` / `#4A3E12` / `#9C7A0C` | info box |
 | Unmapped | `#F2A07B` | `#B4532A` | "not mapped" values |
+| Error | `#FF7B7B` | `#C62828` | weld property not in Project Setup (row name, 2 px DropZone border, summary) |
 | CheckAccent | `#FDD541` | `#44525C` | checkbox/radio accent |
 
 Text colours meet 4.5:1 contrast on their backgrounds. Keep that true when you add colours. Side 1 and side 2 must

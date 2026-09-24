@@ -16,7 +16,9 @@ namespace WeldPropUtils.UI
 
         private readonly WeldPropSettings _settings;
         private readonly List<SourceProperty> _allSources;
-        private readonly HashSet<string> _schemaTargets;
+        private readonly HashSet<string> _weldProps;
+        // Weld property rows the user added that have no source yet (target -> side). Not saved: an empty row writes nothing.
+        private readonly Dictionary<string, int> _emptyRows = new Dictionary<string, int>(StringComparer.Ordinal);
         private MappingProfile _profile;
         private string _activeTab = AllTab;
         private string _selectedSource;
@@ -24,22 +26,27 @@ namespace WeldPropUtils.UI
         private string _profileName;
         private string _hintText;
         private string _noteText;
+        private bool _hasMissing;
 
         // (saved, updateWelds)
         public event Action<bool, bool> CloseRequested;
 
-        public MappingViewModel(WeldPropSettings settings, List<SourceProperty> sources, List<string> schemaTargets, string projectName)
+        // weldProperties: all properties of the weld classes in Project Setup (empty when they could not be read).
+        public MappingViewModel(WeldPropSettings settings, List<SourceProperty> sources, List<string> weldProperties, string projectName)
         {
             _settings = settings;
             _allSources = sources;
-            _schemaTargets = new HashSet<string>(schemaTargets, StringComparer.Ordinal);
+            _weldProps = new HashSet<string>(weldProperties, StringComparer.Ordinal);
+            Side1 = new SideViewModel(1, RefreshOptions);
+            Side2 = new SideViewModel(2, RefreshOptions);
             _profile = settings.GetActiveProfile();
             Subtitle = "SPDS Plant tools · Project: " + projectName + " · classes read from Project Setup";
 
             NewProfileCommand = new RelayCommand(NewProfile);
             DeleteProfileCommand = new RelayCommand(DeleteProfile, () => _settings.Profiles.Count > 1);
-            ResetCommand = new RelayCommand(() => { _profile.Mappings = MappingProfile.CreateDefault().Mappings; RefreshMapping(); });
-            ClearAllCommand = new RelayCommand(() => { _profile.Mappings.Clear(); RefreshMapping(); });
+            ResetCommand = new RelayCommand(() => { _profile.Mappings = MappingProfile.CreateDefault().Mappings; _emptyRows.Clear(); RefreshMapping(); });
+            ClearAllCommand = new RelayCommand(ClearAll);
+            RemoveMissingCommand = new RelayCommand(RemoveMissing);
             SaveCommand = new RelayCommand(() => CloseRequested?.Invoke(true, false));
             SaveAndUpdateCommand = new RelayCommand(() => CloseRequested?.Invoke(true, true));
             CancelCommand = new RelayCommand(() => CloseRequested?.Invoke(false, false));
@@ -53,8 +60,8 @@ namespace WeldPropUtils.UI
         public ObservableCollection<PillItem> Tabs { get; } = new ObservableCollection<PillItem>();
         public ObservableCollection<PillItem> Profiles { get; } = new ObservableCollection<PillItem>();
         public ObservableCollection<SourceItem> Sources { get; } = new ObservableCollection<SourceItem>();
-        public ObservableCollection<TargetRow> Side1Rows { get; } = new ObservableCollection<TargetRow>();
-        public ObservableCollection<TargetRow> Side2Rows { get; } = new ObservableCollection<TargetRow>();
+        public SideViewModel Side1 { get; }
+        public SideViewModel Side2 { get; }
         public ObservableCollection<SummaryLine> Summary { get; } = new ObservableCollection<SummaryLine>();
         public bool HasNoSources => _allSources.Count == 0;
 
@@ -91,6 +98,13 @@ namespace WeldPropUtils.UI
             }
         }
 
+        // Some rows name a weld property that the weld classes in Project Setup don't have.
+        public bool HasMissing
+        {
+            get => _hasMissing;
+            private set => SetField(ref _hasMissing, value);
+        }
+
         public string HintText
         {
             get => _hintText;
@@ -107,6 +121,7 @@ namespace WeldPropUtils.UI
         public ICommand DeleteProfileCommand { get; }
         public ICommand ResetCommand { get; }
         public ICommand ClearAllCommand { get; }
+        public ICommand RemoveMissingCommand { get; }
         public ICommand SaveCommand { get; }
         public ICommand SaveAndUpdateCommand { get; }
         public ICommand CancelCommand { get; }
@@ -132,6 +147,7 @@ namespace WeldPropUtils.UI
                     _profile = p;
                     _settings.ActiveProfile = p.Name;
                     _selectedSource = null;
+                    _emptyRows.Clear();
                     RefreshAll();
                 }));
             }
@@ -169,40 +185,54 @@ namespace WeldPropUtils.UI
             }
         }
 
+        private bool IsMissing(string target)
+        {
+            return _weldProps.Count > 0 && !_weldProps.Contains(target);
+        }
+
+        private bool IsUsed(string target)
+        {
+            return _profile.Find(target) != null || _emptyRows.ContainsKey(target);
+        }
+
         private void RefreshMapping()
         {
-            var targets = new SortedSet<string>(_schemaTargets, StringComparer.OrdinalIgnoreCase);
-            foreach (MappingProfile profile in _settings.Profiles)
-                foreach (PropertyMapping m in profile.Mappings)
-                    targets.Add(m.Target);
-
-            Side1Rows.Clear();
-            Side2Rows.Clear();
-            foreach (string target in targets)
+            foreach (SideViewModel side in new[] { Side1, Side2 })
             {
-                string t = target;
-                var row = new TargetRow(
-                    t,
-                    _profile.GetSource(t),
-                    _schemaTargets.Count > 0 && !_schemaTargets.Contains(t),
-                    dropped => Assign(t, dropped),
-                    () => { if (_selectedSource != null) Assign(t, _selectedSource); },
-                    () => { _profile.Unassign(t, _profile.MirrorSides); RefreshMapping(); });
-                (MappingProfile.SideOf(t) == 2 ? Side2Rows : Side1Rows).Add(row);
+                SideViewModel sv = side;
+                IEnumerable<string> targets = _profile.Mappings.Where(m => m.Side == sv.Side).Select(m => m.Target)
+                    .Concat(_emptyRows.Where(e => e.Value == sv.Side).Select(e => e.Key))
+                    .Distinct()
+                    .OrderBy(t => t, StringComparer.OrdinalIgnoreCase);
+                sv.Rows.Clear();
+                foreach (string target in targets)
+                {
+                    string t = target;
+                    sv.Rows.Add(new TargetRow(
+                        t,
+                        _profile.GetSource(t),
+                        IsMissing(t),
+                        dropped => Assign(t, sv.Side, dropped),
+                        () => { if (_selectedSource != null) Assign(t, sv.Side, _selectedSource); },
+                        () => Clear(t, sv.Side)));
+                }
+                RefreshOptions(sv);
             }
 
             Summary.Clear();
             foreach (PropertyMapping m in _profile.Mappings.OrderBy(m => m.Side).ThenBy(m => m.Target, StringComparer.OrdinalIgnoreCase))
-                Summary.Add(new SummaryLine(m.Target, m.Source));
+                Summary.Add(new SummaryLine(m.Target, m.Side, m.Source, IsMissing(m.Target)));
 
-            int unmapped = Side1Rows.Count + Side2Rows.Count - _profile.Mappings.Count;
-            int missing = _schemaTargets.Count == 0 ? 0 : _profile.Mappings.Count(m => !_schemaTargets.Contains(m.Target));
-            var notes = new List<string>
-            {
-                unmapped <= 0 ? "All weld fields are mapped." : unmapped + " weld field(s) not mapped; they keep their current value."
-            };
-            if (missing > 0) notes.Add(missing + " mapped weld propert" + (missing == 1 ? "y is" : "ies are") + " missing in Project Setup; add them to the weld class or writing fails.");
-            if (_schemaTargets.Count == 0) notes.Add("Weld classes could not be read from Project Setup; showing the profile's fields only.");
+            int missing = Side1.Rows.Concat(Side2.Rows).Count(r => r.MissingInSetup);
+            HasMissing = missing > 0;
+            var notes = new List<string>();
+            if (_emptyRows.Count > 0) notes.Add(_emptyRows.Count + " weld field(s) not mapped; they keep their current value.");
+            if (missing > 0)
+                notes.Add(missing + " weld propert" + (missing == 1 ? "y (red) is" : "ies (red) are") + " not in the weld classes of Project Setup "
+                    + "and will be skipped. Add them in Project Setup, or remove them and use \"+ Add weld property\".");
+            if (_weldProps.Count == 0) notes.Add("Weld classes could not be read from Project Setup; showing the profile's fields only.");
+            if (Side1.Rows.Count + Side2.Rows.Count == 0) notes.Add("No weld fields yet: use \"+ Add weld property\" on a side.");
+            if (notes.Count == 0) notes.Add("All weld fields are mapped.");
             NoteText = string.Join("\n", notes);
 
             HintText = _selectedSource != null
@@ -211,14 +241,93 @@ namespace WeldPropUtils.UI
             OnPropertyChanged(nameof(MirrorSides));
         }
 
+        // Weld properties from Project Setup that are not on either side yet, filtered by the side's search text.
+        private void RefreshOptions(SideViewModel side)
+        {
+            string query = (side.PickerSearch ?? "").Trim();
+            side.Options.Clear();
+            foreach (string prop in _weldProps.OrderBy(p => p, StringComparer.OrdinalIgnoreCase))
+            {
+                if (IsUsed(prop) || prop == "WeldNumber") continue;
+                if (query.Length > 0 && prop.IndexOf(query, StringComparison.OrdinalIgnoreCase) < 0) continue;
+                string p = prop;
+                side.Options.Add(new PickItem(p, () => AddRow(p, side.Side)));
+            }
+            side.HasNoOptions = side.Options.Count == 0;
+        }
+
         // ---------- actions ----------
 
-        private void Assign(string target, string source)
+        // With "same mapping for both sides" the counterpart on the other side ("Port1_X" <-> "Port2_X") gets the same source.
+        private void Assign(string target, int side, string source)
         {
             if (string.IsNullOrEmpty(source)) return;
-            _profile.Assign(target, source, _profile.MirrorSides);
+            AssignOne(target, side, source);
+            string other = _profile.MirrorSides ? WeldSides.Counterpart(target, _weldProps) : null;
+            if (other != null) AssignOne(other, SideOfExisting(other) ?? 3 - side, source);
             _selectedSource = null;
             RefreshSources();
+            RefreshMapping();
+        }
+
+        private void AssignOne(string target, int side, string source)
+        {
+            _profile.Assign(target, side, source);
+            _emptyRows.Remove(target);
+        }
+
+        // The side a target is already shown on, or null.
+        private int? SideOfExisting(string target)
+        {
+            PropertyMapping mapping = _profile.Find(target);
+            if (mapping != null) return mapping.Side;
+            return _emptyRows.TryGetValue(target, out int side) ? side : (int?)null;
+        }
+
+        // × on a row: a mapped row is emptied (kept for dropping another property), an empty row is removed.
+        private void Clear(string target, int side)
+        {
+            if (_profile.Find(target) == null)
+            {
+                _emptyRows.Remove(target);
+            }
+            else
+            {
+                _profile.Unassign(target);
+                _emptyRows[target] = side;
+                string other = _profile.MirrorSides ? WeldSides.Counterpart(target, _weldProps) : null;
+                PropertyMapping otherMapping = other == null ? null : _profile.Find(other);
+                if (otherMapping != null)
+                {
+                    _profile.Unassign(other);
+                    _emptyRows[other] = otherMapping.Side;
+                }
+            }
+            RefreshMapping();
+        }
+
+        // Adds an empty row for a weld property; with mirroring also its counterpart on the other side.
+        private void AddRow(string target, int side)
+        {
+            if (!IsUsed(target)) _emptyRows[target] = side;
+            string other = _profile.MirrorSides ? WeldSides.Counterpart(target, _weldProps) : null;
+            if (other != null && !IsUsed(other)) _emptyRows[other] = 3 - side;
+            Side1.ClosePicker();
+            Side2.ClosePicker();
+            RefreshMapping();
+        }
+
+        private void ClearAll()
+        {
+            foreach (PropertyMapping m in _profile.Mappings) _emptyRows[m.Target] = m.Side;
+            _profile.Mappings.Clear();
+            RefreshMapping();
+        }
+
+        private void RemoveMissing()
+        {
+            _profile.Mappings.RemoveAll(m => IsMissing(m.Target));
+            foreach (string target in _emptyRows.Keys.Where(IsMissing).ToList()) _emptyRows.Remove(target);
             RefreshMapping();
         }
 
@@ -229,6 +338,7 @@ namespace WeldPropUtils.UI
             _profile = _profile.Clone("Profile " + n);
             _settings.Profiles.Add(_profile);
             _settings.ActiveProfile = _profile.Name;
+            _emptyRows.Clear();
             RefreshAll();
         }
 
@@ -238,6 +348,7 @@ namespace WeldPropUtils.UI
             _settings.Profiles.Remove(_profile);
             _profile = _settings.Profiles[0];
             _settings.ActiveProfile = _profile.Name;
+            _emptyRows.Clear();
             RefreshAll();
         }
     }
@@ -282,7 +393,8 @@ namespace WeldPropUtils.UI
             MissingInSetup = missingInSetup;
             DropCommand = new RelayCommand(p => drop(p as string));
             ActivateCommand = new RelayCommand(activate);
-            ClearCommand = new RelayCommand(clear, () => source != null);
+            ClearCommand = new RelayCommand(clear);
+            ClearToolTip = source != null ? "Clear this field" : "Remove this row";
         }
 
         public string Target { get; }
@@ -291,17 +403,82 @@ namespace WeldPropUtils.UI
         public ICommand DropCommand { get; }
         public ICommand ActivateCommand { get; }
         public ICommand ClearCommand { get; }
+        public string ClearToolTip { get; }
     }
 
     public sealed class SummaryLine
     {
-        public SummaryLine(string target, string source)
+        public SummaryLine(string target, int side, string source, bool missingInSetup)
         {
             Target = target;
-            Source = "← " + source;
+            Source = "← " + source + " (side " + side + ")";
+            MissingInSetup = missingInSetup;
         }
 
         public string Target { get; }
         public string Source { get; }
+        public bool MissingInSetup { get; }
+    }
+
+    // One side card (side 1 = larger part, side 2 = the other): its rows and the "+ Add weld property" picker.
+    public sealed class SideViewModel : ObservableObject
+    {
+        private readonly Action<SideViewModel> _refreshOptions;
+        private bool _isPickerOpen;
+        private string _pickerSearch = "";
+        private bool _hasNoOptions;
+
+        public SideViewModel(int side, Action<SideViewModel> refreshOptions)
+        {
+            Side = side;
+            _refreshOptions = refreshOptions;
+            Title = side == 1 ? "Side 1 · larger part" : "Side 2 · smaller part";
+            Description = side == 1 ? "port with bigger OD, then wall thickness" : "the other connected part";
+            TogglePickerCommand = new RelayCommand(() => IsPickerOpen = !IsPickerOpen);
+        }
+
+        public int Side { get; }
+        public string Title { get; }
+        public string Description { get; }
+        public ObservableCollection<TargetRow> Rows { get; } = new ObservableCollection<TargetRow>();
+        public ObservableCollection<PickItem> Options { get; } = new ObservableCollection<PickItem>();
+        public ICommand TogglePickerCommand { get; }
+
+        public bool IsPickerOpen
+        {
+            get => _isPickerOpen;
+            set { if (SetField(ref _isPickerOpen, value) && value) _refreshOptions(this); }
+        }
+
+        public string PickerSearch
+        {
+            get => _pickerSearch;
+            set { if (SetField(ref _pickerSearch, value ?? "")) _refreshOptions(this); }
+        }
+
+        public bool HasNoOptions
+        {
+            get => _hasNoOptions;
+            set => SetField(ref _hasNoOptions, value);
+        }
+
+        public void ClosePicker()
+        {
+            IsPickerOpen = false;
+            PickerSearch = "";
+        }
+    }
+
+    // A weld property offered by the "+ Add weld property" picker.
+    public sealed class PickItem
+    {
+        public PickItem(string name, Action add)
+        {
+            Name = name;
+            AddCommand = new RelayCommand(add);
+        }
+
+        public string Name { get; }
+        public ICommand AddCommand { get; }
     }
 }

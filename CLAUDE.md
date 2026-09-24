@@ -33,8 +33,8 @@ tools/compile-check/        Linux compile check (C# + XAML) against the real 202
 
 | Command         | What it does |
 |-----------------|--------------|
-| `SetWeldProp`   | For every visible `ACPPCONNECTOR` whose `JointType` is `Buttweld`, `Tap` or `Socketweld`, writes `Material1/2`, `OD1/2`, `WallThickness1/2`, `LDS1/2` and `SPEC1/2` onto the weld sub-part row. |
-| `WeldPropMapping` | Opens the SPDS **Weld Property Mapping** window: drag part properties (read from Project Setup) onto weld properties, manage profiles, dark/light theme. **Save** writes the settings file; **Save and update all welds** also runs the mapping on the drawing. |
+| `SetWeldProp`   | For every visible `ACPPCONNECTOR` whose `JointType` is `Buttweld`, `Tap` or `Socketweld`, writes the mapped weld properties of the active profile onto the weld sub-part row (default profile: `Material1/2`, `OD1/2`, `WallThickness1/2`, `LDS1/2`, `SPEC1/2`). Mapped weld properties that the weld classes don't have are skipped, with one message. |
+| `WeldPropMapping` | Opens the SPDS **Weld Property Mapping** window: drag part properties (read from Project Setup) onto weld properties, add any weld class property per side ("+ Add weld property"), weld properties missing in Project Setup are shown red, manage profiles, dark/light theme. **Save** writes the settings file; **Save and update all welds** also runs the mapping on the drawing. |
 | `SetWeldNumber` | Runs `SetWeldProp`, then groups welds that have the same OD, wall thickness and material on both ports. It numbers each group, starting from 11 for butt welds, 51 for taps and 71 for socket welds. Writes the result to `WeldNumber`. |
 
 Both commands read `<Plant project folder>\SPDS\WeldPropUtils.json` (see *Project settings* below).
@@ -42,8 +42,11 @@ Both commands read `<Plant project folder>\SPDS\WeldPropUtils.json` (see *Projec
 Port 1 is always the "larger" side (`Weld.NormalizePorts`: OD, then wall thickness, then material).
 
 ### Project prerequisites (in the Plant 3D project, not in code)
-The weld class must have these custom properties, added in Project Setup:
-`Material1, OD1, WallThickness1, LDS1, SPEC1, Material2, OD2, WallThickness2, LDS2, SPEC2, WeldNumber`.
+The weld classes need custom properties to write to, added in Project Setup. Any names work (e.g. the user's project has
+`Port1_Material, Port1_Out_Diameter, Port1_Wall_Thickness, Port2_…`); pick them in the mapping window. The default profile
+uses `Material1, OD1, WallThickness1, LDS1, SPEC1, Material2, …`. `SetWeldNumber` needs `WeldNumber`.
+Side pairing (for "same mapping for both sides"): names that differ only in one `1`/`2` digit (`WeldSides.Counterpart`).
+The side is stored per mapping (`side`), not derived from the name.
 
 ### Project settings (`<project>\SPDS\WeldPropUtils.json`)
 - Location: `PlantProject.ProjectFolderPath` (the folder containing `Project.xml`) + `SPDS\WeldPropUtils.json`.
