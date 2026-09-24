@@ -3,9 +3,8 @@
 A C# class library that runs inside **AutoCAD Plant 3D**. It reads the parts on each side of a weld (a Plant 3D
 *connector*) and copies their properties into custom properties on the weld. It can also assign weld numbers.
 
-Target versions: **2024** (.NET Framework 4.8), **2026** (.NET 8), and later **2027+** (.NET 10).
-The csproj is SDK-style and multi-targeted: `net8.0-windows` (2025/2026) and `net48` (2024). Each target builds only when its SDK
-variable is set (see *Build and run*). The user runs **Plant 3D 2026 only**, so net8 is the main target and the one they test.
+Target: **Plant 3D 2026 only** (.NET 8, `net8.0-windows`). Decision by the user: no multi-version support for now.
+A future Plant 3D version gets its own branch or build.
 
 ## Layout
 
@@ -16,9 +15,9 @@ WeldPropUtils/WeldPropUtils/
   MiscUtilities.cs          Acad (static doc/db/editor/DataLinksManager) + extension helpers
   WeldKey.cs                structPort + Weld model (port normalisation); structPort.Props = all part properties
   Settings/                 per-project JSON settings (WeldPropSettings model + SettingsStore load/save)
-  WeldPropUtils.csproj      SDK-style; net8.0-windows from $(AP3D_SDK_2026), net48 from $(AP3D_SDK_2024)
+  WeldPropUtils.csproj      SDK-style, net8.0-windows; references from $(AP3D_SDK_2026)
   Properties/launchSettings.json   F5 starts Plant 3D 2026 (acad.exe /product PLNT3D)
-tools/compile-check/        Linux compile check against the real 2024 + 2026 SDK DLLs (used by Claude)
+tools/compile-check/        Linux compile check against the real 2026 SDK DLLs (used by Claude)
 .claude/skills/             domain knowledge for Claude (see below)
 ```
 
@@ -44,33 +43,30 @@ The weld class must have these custom properties, added in Project Setup:
   A file that can't be read is left untouched and the defaults are used for that run, with a message on the command line.
 - Content: `schemaVersion`, `activeProfile`, `autoUpdate` (reserved for step 2), `numbering` (start numbers for
   Buttweld/Tap/Socketweld), and `profiles[]`, each with `name`, `mirrorSides` and `mappings[]` of `{target, side (1|2), source}`.
-- Serializer: `DataContractJsonSerializer`, which is built into net48 and net8. Don't add Newtonsoft.Json, because AutoCAD loads its own copy.
+- Serializer: `DataContractJsonSerializer`, which is built into .NET 8. Don't add Newtonsoft.Json, because AutoCAD loads its own copy.
   When adding a member: `[DataMember(Name = "camelCase")]`, a default in `Normalize()`, and raise `schemaVersion` if old
   files need converting.
 - Per-user preferences, such as the UI theme, don't belong here. They go to `%AppData%\SPDS\WeldPropUtils\`.
 
 ## Build and run (Windows)
-- Visual Studio 2022 (17.8+) with the .NET 8 SDK. The .NET Framework 4.8 targeting pack is only needed for the 2024 build.
-- Environment variables, set to the SDK root folders (restart Visual Studio after setting them):
-  - `AP3D_SDK_2026` → the Plant 3D 2026 SDK folder (Drive `AP3D_2026_SDK`). This builds `net8.0-windows`.
-  - `AP3D_SDK_2024` → the Plant 3D 2024 SDK folder. This is optional and builds `net48`.
-  The csproj takes `inc\AcCoreMgd.dll`, `AcDbMgd.dll` and `AcMgd.dll` and every `inc-x64\PnP*.dll` from there, with `Private=False`.
-- Output: `bin\<Config>\net8.0-windows\WeldPropUtils.dll` (2025/2026) and `bin\<Config>\net48\WeldPropUtils.dll` (2024).
+- Visual Studio 2022 (17.8+) with the .NET 8 SDK.
+- Environment variable `AP3D_SDK_2026` = the Plant 3D 2026 SDK root folder (Drive `AP3D_2026_SDK`). Restart Visual Studio after
+  setting it. The csproj takes `inc\AcCoreMgd.dll`, `AcDbMgd.dll`, `AcMgd.dll` and `inc-x64\PnP*.dll` from there (`Private=False`).
+- Output: `bin\<Config>\net8.0-windows\WeldPropUtils.dll`.
 - F5 starts Plant 3D 2026 (`Properties/launchSettings.json`). Load the DLL with `NETLOAD`. A Plant 3D project must be open.
 
 ## Working with Claude in this repo
 - **Claude can compile but not run.** `tools/compile-check` builds the sources on Linux against the real SDK
-  DLLs for `net48` (2024) and `net8.0-windows` (2026), by building the real csproj. The DLLs come from the user's Google Drive and are **never
+  DLLs of Plant 3D 2026, by building the real csproj. The DLLs come from the user's Google Drive and are **never
   committed** (see the `plant3d-build-check` skill). The user then tests behaviour in Plant 3D. Every change
   ends with a short manual test plan.
 - Only use API members listed in `.claude/skills/plant3d-api/reference.md`, or ones you verified in the SDK.
   Never invent members.
-- The shared code must compile as **C# 7.3** (the net48 target) and on .NET 8. No .NET Framework-only APIs.
+- .NET 8 / C# 12 (the SDK default). Modern C# is fine; no .NET Framework-only APIs.
 - Match the existing style: extension methods in `MiscUtilities`, commands in `WeldPropertiesHandler`.
 - Skills in `.claude/skills/`:
   - `plant3d-api`: verified Plant 3D API facts + `reference.md` with exact signatures
-  - `plant3d-build-check`: fetch the SDK DLLs from Drive and compile-check both targets
-  - `plant3d-multi-version`: 2024/2026/2027 targeting, csproj layout, autoloader bundle
+  - `plant3d-build-check`: fetch the SDK DLLs from Drive and compile-check against the 2026 SDK
   - `autocad-net-plugin`: AutoCAD .NET basics (commands, transactions, locking, selection, loading)
   - `plant3d-change-review`: the checklist before every commit
   - `spds-wpf-ui`: SPDS brand themes (dark + light), fonts, logo, WPF hosting in AutoCAD, approved mapping-window layout

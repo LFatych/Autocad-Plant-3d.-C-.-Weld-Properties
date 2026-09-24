@@ -1,11 +1,11 @@
 ---
 name: autocad-net-plugin
-description: AutoCAD .NET (ObjectARX managed API) plugin fundamentals as they apply inside Plant 3D 2024 (.NET Framework 4.8) and 2025+ (.NET 8/10) — CommandMethod/CommandFlags, transactions, document locking, SelectionFilter/SelectAll, Editor output, IExtensionApplication, NETLOAD and debugging. Use when adding or changing commands, touching transactions or selections, or changing how the plugin is loaded.
+description: AutoCAD .NET (ObjectARX managed API) plugin fundamentals as they apply inside Plant 3D 2026 (.NET 8) — CommandMethod/CommandFlags, transactions, document locking, SelectionFilter/SelectAll, Editor output, IExtensionApplication, NETLOAD and debugging. Use when adding or changing commands, touching transactions or selections, or changing how the plugin is loaded.
 ---
 
 # AutoCAD .NET plugin basics (inside Plant 3D)
 
-For the target frameworks, the project file and deployment across versions, see `plant3d-multi-version`.
+The plugin targets Plant 3D 2026 only (`net8.0-windows`); see CLAUDE.md for the build.
 Reference DLLs: `AcCoreMgd` (Application, Document, Editor, CommandMethod), `AcDbMgd` (Database, Transaction, entities)
 and `AcMgd` (UI). Always reference them with `Private=False`.
 
@@ -64,7 +64,8 @@ Use `GetSelection` or `SelectImplied` instead of `SelectAll` to let the user wor
 ## Loading and debugging
 - Development: run `NETLOAD` and pick the DLL. A loaded DLL cannot be unloaded, so restart Plant 3D to reload it.
 - Visual Studio debugging: set the start program to `acad.exe` with the arguments `/product PLNT3D /language "en-US"` (see `Properties/launchSettings.json`).
-- Deployment: an autoloader `.bundle` (see `plant3d-multi-version`).
+- Deployment: an autoloader `.bundle` in `%ProgramData%\Autodesk\ApplicationPlugins\` with `PackageContents.xml`
+  (`RuntimeRequirements OS="Win64" Platform="PLNT3D" SeriesMin="R25.1" SeriesMax="R25.1"`; verify on a real install).
 - `IExtensionApplication.Initialize()` runs when the DLL loads. Keep it light, because there may be no document or project yet.
 
 ## Culture

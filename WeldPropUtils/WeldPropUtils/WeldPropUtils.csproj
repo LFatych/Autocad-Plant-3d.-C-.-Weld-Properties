@@ -1,23 +1,16 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <!--
-    One project, one DLL per Plant 3D runtime:
-      net8.0-windows -> Plant 3D 2025/2026  (needs env var AP3D_SDK_2026)
-      net48          -> Plant 3D 2024       (needs env var AP3D_SDK_2024)
-    A target is built only when its SDK variable is set; with neither set, net8.0-windows is built
-    and the build fails on the missing references, which names what is missing.
-    Each SDK folder must contain inc\AcCoreMgd.dll, AcDbMgd.dll, AcMgd.dll and inc-x64\PnP*.dll.
+    Plant 3D 2026 plugin (.NET 8).
+    Needs the environment variable AP3D_SDK_2026 = Plant 3D 2026 SDK root folder,
+    containing inc\AcCoreMgd.dll, AcDbMgd.dll, AcMgd.dll and inc-x64\PnP*.dll.
   -->
   <PropertyGroup>
-    <TargetFrameworks>net8.0-windows</TargetFrameworks>
-    <TargetFrameworks Condition="'$(AP3D_SDK_2024)' != '' And '$(AP3D_SDK_2026)' != ''">net8.0-windows;net48</TargetFrameworks>
-    <TargetFrameworks Condition="'$(AP3D_SDK_2024)' != '' And '$(AP3D_SDK_2026)' == ''">net48</TargetFrameworks>
+    <TargetFramework>net8.0-windows</TargetFramework>
     <OutputType>Library</OutputType>
     <RootNamespace>WeldPropUtils</RootNamespace>
     <AssemblyName>WeldPropUtils</AssemblyName>
     <UseWindowsForms>true</UseWindowsForms>
     <PlatformTarget>x64</PlatformTarget>
-    <!-- Shared code stays C# 7.3 so it compiles for net48 as well (see CLAUDE.md). -->
-    <LangVersion>7.3</LangVersion>
     <Nullable>disable</Nullable>
     <ImplicitUsings>disable</ImplicitUsings>
     <!-- Keep Properties\AssemblyInfo.cs -->
@@ -25,18 +18,8 @@
     <Deterministic>true</Deterministic>
     <!-- Autodesk assemblies are mixed-mode x64 -->
     <ResolveAssemblyWarnOrErrorOnTargetArchitectureMismatch>None</ResolveAssemblyWarnOrErrorOnTargetArchitectureMismatch>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(TargetFramework)' == 'net8.0-windows'">
     <PlantSdk>$(AP3D_SDK_2026)</PlantSdk>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(TargetFramework)' == 'net48'">
-    <PlantSdk>$(AP3D_SDK_2024)</PlantSdk>
-  </PropertyGroup>
-
-  <ItemGroup Condition="'$(TargetFramework)' == 'net48'">
-    <Reference Include="System.Runtime.Serialization" />
-  </ItemGroup>
 
   <ItemGroup>
     <Reference Include="AcCoreMgd"><HintPath>$(PlantSdk)\inc\AcCoreMgd.dll</HintPath><Private>False</Private></Reference>

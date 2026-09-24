@@ -62,7 +62,7 @@ differ in lightness, not only in hue.
   per-user settings.
 - Dark title bar on Windows 10/11: optional, via `DwmSetWindowAttribute(DWMWA_USE_IMMERSIVE_DARK_MODE=20)`.
 
-## Hosting the window (verified in AcCoreMgd 2024 + 2026)
+## Hosting the window (verified in AcCoreMgd 2026; same in 2024)
 `Autodesk.AutoCAD.ApplicationServices.Core.Application` (the AcMgd `Application` inherits it):
 ```
 bool? ShowModalWindow(Window formToShow)
@@ -75,7 +75,7 @@ and can remember its size and position. A modal window runs inside the command, 
 document context.
 
 ## Project/build notes
-- Add `<UseWPF>true</UseWPF>` to the SDK-style csproj. It covers both targets, and XAML files are picked up as `Page` items automatically.
+- Add `<UseWPF>true</UseWPF>` to the SDK-style csproj. XAML files are picked up as `Page` items automatically.
 - **XAML cannot be compile-checked on Linux.** The WPF markup compiler only ships with the Windows SDK. So:
   - keep the logic (the mapping model, profile load/save, reading the schema) in plain C# classes, which `tools/compile-check` does verify
   - keep XAML declarative (bindings plus a thin code-behind)

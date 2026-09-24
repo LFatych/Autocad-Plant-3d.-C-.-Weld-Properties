@@ -1,6 +1,6 @@
 ---
 name: plant3d-build-check
-description: Compile WeldPropUtils on Linux against the real Plant 3D 2024 (net48) and 2026 (net8.0-windows) SDK reference DLLs fetched from the user's Google Drive, to catch compile errors and API mistakes before pushing. Use before every commit that touches .cs or project files, and whenever you need to prove an API member exists in a given Plant 3D version.
+description: Compile WeldPropUtils on Linux against the real Plant 3D 2026 (net8.0-windows) SDK reference DLLs fetched from the user's Google Drive, to catch compile errors and API mistakes before pushing. Use before every commit that touches .cs or project files, and whenever you need to prove an API member exists in a given Plant 3D version.
 ---
 
 # Compile check against the real SDKs
@@ -11,8 +11,7 @@ This only proves the code compiles. It does not run it, because running needs Wi
 ```bash
 command -v dotnet || (apt-get update -q && apt-get install -y -q dotnet-sdk-8.0)
 ```
-NuGet (api.nuget.org) is reachable. The check project downloads `Microsoft.NETFramework.ReferenceAssemblies`
-(for net48) and `Microsoft.WindowsDesktop.App.Ref` (WinForms/WPF refs for net8 on Linux).
+NuGet (api.nuget.org) is reachable. The build downloads `Microsoft.WindowsDesktop.App.Ref` (WinForms/WPF refs for net8 on Linux).
 
 ## 2. Reference DLLs (Google Drive MCP, once per session)
 Download each file with `mcp__Google_Drive__download_file_content`. Large results are saved to a JSON file
@@ -20,7 +19,7 @@ Download each file with `mcp__Google_Drive__download_file_content`. Large result
 ```bash
 jq -r .content "$saved_json" | base64 -d > "$REF/$(jq -r .title "$saved_json")"
 ```
-Use `$SCRATCH/sdk2024/ref` and `$SCRATCH/sdk2026/ref` (scratchpad). **Never commit these DLLs** (Autodesk license).
+Use `$SCRATCH/sdk2026/ref` (scratchpad). Only the 2026 column is needed; 2024 IDs are kept for API research. **Never commit these DLLs** (Autodesk license).
 
 | File | 2024 file ID (`AP3D_2024_SDK`) | 2026 file ID (`AP3D_2026_SDK`) |
 |---|---|---|
@@ -44,17 +43,16 @@ If the Drive tools return "Insufficient scope", ask the user to reconnect Google
 
 ## 3. Run
 ```bash
-PLANT_REF_2024=$SCRATCH/sdk2024/ref PLANT_REF_2026=$SCRATCH/sdk2026/ref TMPDIR=$SCRATCH \
+PLANT_REF_2026=$SCRATCH/sdk2026/ref TMPDIR=$SCRATCH \
   tools/compile-check/build.sh
 ```
-- `build.sh` builds the **real** `WeldPropUtils.csproj`. It points `AP3D_SDK_2024/2026` at symlinked fake SDK folders,
+- `build.sh` builds the **real** `WeldPropUtils.csproj`. It points `AP3D_SDK_2026` at a symlinked fake SDK folder,
   skips the WindowsDesktop targets (they don't exist on Linux), and injects the WinForms/WPF reference assemblies through
-  `tools/compile-check/LinuxWindowsDesktop.targets`. Set only one `PLANT_REF_*` variable to check a single target.
+  `tools/compile-check/LinuxWindowsDesktop.targets`.
 - Any `error` fails the check. Fix it before committing.
 - A new `warning CS…` in code you touched counts as a finding: fix it or explain it.
 - The known baseline warning is `CS0642` in `WeldPropertiesHandler.cs` (the `using (DocumentLock …) ;` bug), until that bug is fixed.
 - New `.cs` files are picked up automatically (SDK-style project). XAML is not compiled on Linux (see `spds-wpf-ui`).
-- Plant 3D 2027 / .NET 10: once an SDK exists, add a `net10.0-windows` target and a `PLANT_REF_2027` variable, the same way.
 
 ## 4. Report
-Tell the user which targets compiled and quote any warnings. Say plainly that runtime behaviour is not tested yet.
+Tell the user whether it compiled and quote any warnings. Say plainly that runtime behaviour is not tested yet.
