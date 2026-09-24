@@ -75,8 +75,7 @@ and can remember its size and position. A modal window runs inside the command, 
 document context.
 
 ## Project/build notes
-- net48 (old-style csproj): add references to `PresentationCore`, `PresentationFramework`, `WindowsBase`, `System.Xaml`,
-  and add the XAML as `<Page>` items. net8 (SDK-style): `<UseWPF>true</UseWPF>`.
+- Add `<UseWPF>true</UseWPF>` to the SDK-style csproj. It covers both targets, and XAML files are picked up as `Page` items automatically.
 - **XAML cannot be compile-checked on Linux.** The WPF markup compiler only ships with the Windows SDK. So:
   - keep the logic (the mapping model, profile load/save, reading the schema) in plain C# classes, which `tools/compile-check` does verify
   - keep XAML declarative (bindings plus a thin code-behind)

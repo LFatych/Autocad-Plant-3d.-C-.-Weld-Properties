@@ -21,8 +21,9 @@ The 2024 and 2026 values in the table are verified from the SDK DLL metadata. Th
   and reference `..\..\..\inc\AcCoreMgd.dll` and `..\..\..\inc-x64\PnP*.dll` with `Private=False`.
 - A .NET 8 plugin cannot load in 2024, and a net48 plugin cannot load in 2025+. **You need one DLL per runtime.**
 
-## Target project layout (not done yet; propose it to the user before converting)
-Replace the old-style `WeldPropUtils.csproj` with an SDK-style project that multi-targets:
+## Project layout (done: `WeldPropUtils/WeldPropUtils/WeldPropUtils.csproj`)
+The csproj is SDK-style and multi-targeted. Each target is only built when its SDK variable is set (the user has only 2026).
+A simplified version:
 
 ```xml
 <Project Sdk="Microsoft.NET.Sdk">

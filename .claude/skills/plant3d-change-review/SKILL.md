@@ -9,8 +9,8 @@ Claude can compile but cannot run the plugin. Compile it, review it, then give t
 
 ## 1. Compiles (mandatory)
 - [ ] Run the `plant3d-build-check` skill. Both `net48` and `net8.0-windows` must build with no errors and no new warnings.
-- [ ] Each new `.cs` file has a `<Compile Include=...>` line in the real `WeldPropUtils.csproj`, as long as it stays old-style.
-- [ ] Each new Autodesk reference is added to the real csproj **and** to `tools/compile-check/CompileCheck.csproj`.
+- [ ] Each new Autodesk reference is added to `WeldPropUtils.csproj` with an `$(PlantSdk)` HintPath and `Private=False`.
+- [ ] The main target is **net8.0-windows / Plant 3D 2026** (the user's only installed version). Write the test plan for 2026.
 
 ## 2. Runtime correctness (not caught by the compiler)
 - [ ] Document, Database, Editor and DataLinksManager are fetched when the command runs, never cached in static fields.

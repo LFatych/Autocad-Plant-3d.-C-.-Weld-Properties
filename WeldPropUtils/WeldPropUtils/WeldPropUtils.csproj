@@ -1,86 +1,52 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    One project, one DLL per Plant 3D runtime:
+      net8.0-windows -> Plant 3D 2025/2026  (needs env var AP3D_SDK_2026)
+      net48          -> Plant 3D 2024       (needs env var AP3D_SDK_2024)
+    A target is built only when its SDK variable is set; with neither set, net8.0-windows is built
+    and the build fails on the missing references, which names what is missing.
+    Each SDK folder must contain inc\AcCoreMgd.dll, AcDbMgd.dll, AcMgd.dll and inc-x64\PnP*.dll.
+  -->
   <PropertyGroup>
-    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{BD903C98-851C-41A6-9E5B-4F1DA296D7D3}</ProjectGuid>
+    <TargetFrameworks>net8.0-windows</TargetFrameworks>
+    <TargetFrameworks Condition="'$(AP3D_SDK_2024)' != '' And '$(AP3D_SDK_2026)' != ''">net8.0-windows;net48</TargetFrameworks>
+    <TargetFrameworks Condition="'$(AP3D_SDK_2024)' != '' And '$(AP3D_SDK_2026)' == ''">net48</TargetFrameworks>
     <OutputType>Library</OutputType>
-    <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>WeldPropUtils</RootNamespace>
     <AssemblyName>WeldPropUtils</AssemblyName>
-    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
-    <FileAlignment>512</FileAlignment>
+    <UseWindowsForms>true</UseWindowsForms>
+    <PlatformTarget>x64</PlatformTarget>
+    <!-- Shared code stays C# 7.3 so it compiles for net48 as well (see CLAUDE.md). -->
+    <LangVersion>7.3</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <!-- Keep Properties\AssemblyInfo.cs -->
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <Deterministic>true</Deterministic>
+    <!-- Autodesk assemblies are mixed-mode x64 -->
+    <ResolveAssemblyWarnOrErrorOnTargetArchitectureMismatch>None</ResolveAssemblyWarnOrErrorOnTargetArchitectureMismatch>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <DebugSymbols>true</DebugSymbols>
-    <DebugType>full</DebugType>
-    <Optimize>false</Optimize>
-    <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
+
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net8.0-windows'">
+    <PlantSdk>$(AP3D_SDK_2026)</PlantSdk>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <DebugType>pdbonly</DebugType>
-    <Optimize>true</Optimize>
-    <OutputPath>bin\Release\</OutputPath>
-    <DefineConstants>TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net48'">
+    <PlantSdk>$(AP3D_SDK_2024)</PlantSdk>
   </PropertyGroup>
-  <ItemGroup>
-    <Reference Include="AcCoreMgd">
-      <HintPath>$(AP3D_SDK_2024)\inc\AcCoreMgd.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="AcDbMgd">
-      <HintPath>$(AP3D_SDK_2024)\inc\AcDbMgd.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="AcMgd">
-      <HintPath>$(AP3D_SDK_2024)\inc\AcMgd.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="PnP3dObjectsMgd">
-      <HintPath>$(AP3D_SDK_2024)\inc-x64\PnP3dObjectsMgd.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="PnP3dProjectPartsMgd">
-      <HintPath>$(AP3D_SDK_2024)\inc-x64\PnP3dProjectPartsMgd.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="PnPDataLinks">
-      <HintPath>$(AP3D_SDK_2024)\inc-x64\PnPDataLinks.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="PnPDataObjects">
-      <HintPath>$(AP3D_SDK_2024)\inc-x64\PnPDataObjects.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="PnPProjectManagerMgd">
-      <HintPath>$(AP3D_SDK_2024)\inc-x64\PnPProjectManagerMgd.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="System" />
-    <Reference Include="System.Core" />
-    <Reference Include="System.Windows.Forms" />
-    <Reference Include="System.Xml.Linq" />
-    <Reference Include="System.Data.DataSetExtensions" />
-    <Reference Include="Microsoft.CSharp" />
-    <Reference Include="System.Data" />
-    <Reference Include="System.Net.Http" />
-    <Reference Include="System.Xml" />
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'net48'">
     <Reference Include="System.Runtime.Serialization" />
   </ItemGroup>
+
   <ItemGroup>
-    <Compile Include="WeldPropertiesHandler.cs" />
-    <Compile Include="MiscUtilities.cs" />
-    <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="WeldKey.cs" />
-    <Compile Include="Settings\SettingsStore.cs" />
-    <Compile Include="Settings\WeldPropSettings.cs" />
+    <Reference Include="AcCoreMgd"><HintPath>$(PlantSdk)\inc\AcCoreMgd.dll</HintPath><Private>False</Private></Reference>
+    <Reference Include="AcDbMgd"><HintPath>$(PlantSdk)\inc\AcDbMgd.dll</HintPath><Private>False</Private></Reference>
+    <Reference Include="AcMgd"><HintPath>$(PlantSdk)\inc\AcMgd.dll</HintPath><Private>False</Private></Reference>
+    <Reference Include="PnP3dObjectsMgd"><HintPath>$(PlantSdk)\inc-x64\PnP3dObjectsMgd.dll</HintPath><Private>False</Private></Reference>
+    <Reference Include="PnP3dProjectPartsMgd"><HintPath>$(PlantSdk)\inc-x64\PnP3dProjectPartsMgd.dll</HintPath><Private>False</Private></Reference>
+    <Reference Include="PnPDataLinks"><HintPath>$(PlantSdk)\inc-x64\PnPDataLinks.dll</HintPath><Private>False</Private></Reference>
+    <Reference Include="PnPDataObjects"><HintPath>$(PlantSdk)\inc-x64\PnPDataObjects.dll</HintPath><Private>False</Private></Reference>
+    <Reference Include="PnPProjectManagerMgd"><HintPath>$(PlantSdk)\inc-x64\PnPProjectManagerMgd.dll</HintPath><Private>False</Private></Reference>
+    <Reference Include="PnPCommonMgd"><HintPath>$(PlantSdk)\inc-x64\PnPCommonMgd.dll</HintPath><Private>False</Private></Reference>
   </ItemGroup>
-  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

@@ -1,0 +1,24 @@
+<Project>
+  <!--
+    Injected into WeldPropUtils.csproj by build.sh (CustomAfterMicrosoftCommonTargets) so the real project
+    compiles on Linux: the .NET SDK there has no WindowsDesktop (WinForms/WPF) targets, so build.sh passes
+    ImportWindowsDesktopTargets=false and this file adds the WinForms/WPF reference assemblies instead.
+    Never used by Visual Studio builds.
+  -->
+  <PropertyGroup>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <NoWarn>$(NoWarn);MSB3270;MSB3277;NU1505;CA1416</NoWarn>
+    <WinDesktopRefDir>$(NuGetPackageRoot)microsoft.windowsdesktop.app.ref/8.0.0/ref/net8.0/</WinDesktopRefDir>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(TargetFramework)' == 'net8.0-windows'">
+    <PackageDownload Include="Microsoft.WindowsDesktop.App.Ref" Version="[8.0.0]" />
+    <Reference Include="$(WinDesktopRefDir)*.dll" Private="False" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)' == 'net48'">
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="PresentationCore" />
+    <Reference Include="PresentationFramework" />
+    <Reference Include="WindowsBase" />
+    <Reference Include="System.Xaml" />
+  </ItemGroup>
+</Project>

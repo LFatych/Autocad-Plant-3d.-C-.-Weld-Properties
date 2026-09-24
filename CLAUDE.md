@@ -4,7 +4,8 @@ A C# class library that runs inside **AutoCAD Plant 3D**. It reads the parts on 
 *connector*) and copies their properties into custom properties on the weld. It can also assign weld numbers.
 
 Target versions: **2024** (.NET Framework 4.8), **2026** (.NET 8), and later **2027+** (.NET 10).
-Today the repo builds only for 2024 (old-style csproj, net48). The plan for multi-targeting is in the `plant3d-multi-version` skill.
+The csproj is SDK-style and multi-targeted: `net8.0-windows` (2025/2026) and `net48` (2024). Each target builds only when its SDK
+variable is set (see *Build and run*). The user runs **Plant 3D 2026 only**, so net8 is the main target and the one they test.
 
 ## Layout
 
@@ -15,7 +16,8 @@ WeldPropUtils/WeldPropUtils/
   MiscUtilities.cs          Acad (static doc/db/editor/DataLinksManager) + extension helpers
   WeldKey.cs                structPort + Weld model (port normalisation); structPort.Props = all part properties
   Settings/                 per-project JSON settings (WeldPropSettings model + SettingsStore load/save)
-  WeldPropUtils.csproj      old-style csproj, net48; references come from $(AP3D_SDK_2024)
+  WeldPropUtils.csproj      SDK-style; net8.0-windows from $(AP3D_SDK_2026), net48 from $(AP3D_SDK_2024)
+  Properties/launchSettings.json   F5 starts Plant 3D 2026 (acad.exe /product PLNT3D)
 tools/compile-check/        Linux compile check against the real 2024 + 2026 SDK DLLs (used by Claude)
 .claude/skills/             domain knowledge for Claude (see below)
 ```
@@ -48,20 +50,22 @@ The weld class must have these custom properties, added in Project Setup:
 - Per-user preferences, such as the UI theme, don't belong here. They go to `%AppData%\SPDS\WeldPropUtils\`.
 
 ## Build and run (Windows)
-- Visual Studio 2022 with the .NET Framework 4.8 targeting pack.
-- Set the environment variable `AP3D_SDK_2024` to the SDK root. The csproj takes `inc\AcCoreMgd.dll`, `AcDbMgd.dll` and `AcMgd.dll`
-  from there, and every `PnP*.dll` from `inc-x64\`. All Autodesk references are `Private=False`.
-- Debugging starts `acad.exe /product PLNT3D`. Load the DLL with `NETLOAD`. A Plant 3D project must be open.
+- Visual Studio 2022 (17.8+) with the .NET 8 SDK. The .NET Framework 4.8 targeting pack is only needed for the 2024 build.
+- Environment variables, set to the SDK root folders (restart Visual Studio after setting them):
+  - `AP3D_SDK_2026` → the Plant 3D 2026 SDK folder (Drive `AP3D_2026_SDK`). This builds `net8.0-windows`.
+  - `AP3D_SDK_2024` → the Plant 3D 2024 SDK folder. This is optional and builds `net48`.
+  The csproj takes `inc\AcCoreMgd.dll`, `AcDbMgd.dll` and `AcMgd.dll` and every `inc-x64\PnP*.dll` from there, with `Private=False`.
+- Output: `bin\<Config>\net8.0-windows\WeldPropUtils.dll` (2025/2026) and `bin\<Config>\net48\WeldPropUtils.dll` (2024).
+- F5 starts Plant 3D 2026 (`Properties/launchSettings.json`). Load the DLL with `NETLOAD`. A Plant 3D project must be open.
 
 ## Working with Claude in this repo
 - **Claude can compile but not run.** `tools/compile-check` builds the sources on Linux against the real SDK
-  DLLs for `net48` (2024) and `net8.0-windows` (2026). The DLLs come from the user's Google Drive and are **never
+  DLLs for `net48` (2024) and `net8.0-windows` (2026), by building the real csproj. The DLLs come from the user's Google Drive and are **never
   committed** (see the `plant3d-build-check` skill). The user then tests behaviour in Plant 3D. Every change
   ends with a short manual test plan.
 - Only use API members listed in `.claude/skills/plant3d-api/reference.md`, or ones you verified in the SDK.
   Never invent members.
 - The shared code must compile as **C# 7.3** (the net48 target) and on .NET 8. No .NET Framework-only APIs.
-- Keep the old-style csproj unless the user agrees to convert it (see `plant3d-multi-version`).
 - Match the existing style: extension methods in `MiscUtilities`, commands in `WeldPropertiesHandler`.
 - Skills in `.claude/skills/`:
   - `plant3d-api`: verified Plant 3D API facts + `reference.md` with exact signatures

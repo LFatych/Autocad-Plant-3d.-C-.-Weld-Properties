@@ -63,7 +63,7 @@ Use `GetSelection` or `SelectImplied` instead of `SelectAll` to let the user wor
 
 ## Loading and debugging
 - Development: run `NETLOAD` and pick the DLL. A loaded DLL cannot be unloaded, so restart Plant 3D to reload it.
-- Visual Studio debugging: set the start program to `acad.exe` with the arguments `/product PLNT3D /language "en-US"` (see `.csproj.user`).
+- Visual Studio debugging: set the start program to `acad.exe` with the arguments `/product PLNT3D /language "en-US"` (see `Properties/launchSettings.json`).
 - Deployment: an autoloader `.bundle` (see `plant3d-multi-version`).
 - `IExtensionApplication.Initialize()` runs when the DLL loads. Keep it light, because there may be no document or project yet.
 

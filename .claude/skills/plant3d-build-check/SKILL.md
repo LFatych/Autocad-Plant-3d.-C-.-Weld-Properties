@@ -47,12 +47,13 @@ If the Drive tools return "Insufficient scope", ask the user to reconnect Google
 PLANT_REF_2024=$SCRATCH/sdk2024/ref PLANT_REF_2026=$SCRATCH/sdk2026/ref TMPDIR=$SCRATCH \
   tools/compile-check/build.sh
 ```
-- `tools/compile-check/CompileCheck.csproj` compiles `WeldPropUtils/WeldPropUtils/**/*.cs` for two targets:
-  `net48` with **LangVersion 7.3** (the same as the real csproj) and `net8.0-windows`.
+- `build.sh` builds the **real** `WeldPropUtils.csproj`. It points `AP3D_SDK_2024/2026` at symlinked fake SDK folders,
+  skips the WindowsDesktop targets (they don't exist on Linux), and injects the WinForms/WPF reference assemblies through
+  `tools/compile-check/LinuxWindowsDesktop.targets`. Set only one `PLANT_REF_*` variable to check a single target.
 - Any `error` fails the check. Fix it before committing.
 - A new `warning CS…` in code you touched counts as a finding: fix it or explain it.
 - The known baseline warning is `CS0642` in `WeldPropertiesHandler.cs` (the `using (DocumentLock …) ;` bug), until that bug is fixed.
-- New `.cs` files get picked up automatically. The real `WeldPropUtils.csproj` (old-style) still needs its `<Compile Include>` line.
+- New `.cs` files are picked up automatically (SDK-style project). XAML is not compiled on Linux (see `spds-wpf-ui`).
 - Plant 3D 2027 / .NET 10: once an SDK exists, add a `net10.0-windows` target and a `PLANT_REF_2027` variable, the same way.
 
 ## 4. Report
