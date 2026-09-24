@@ -1,72 +1,73 @@
 ---
 name: autocad-net-plugin
-description: AutoCAD .NET (ObjectARX managed) plugin fundamentals for .NET Framework 4.8 / AutoCAD 2024-based verticals — CommandMethod, CommandFlags, transactions, document locking, SelectionFilter/SelectAll, Editor messaging, IExtensionApplication, NETLOAD/autoloading, csproj references. Use when adding or changing commands, touching transactions or selections, or changing how the plugin is built or loaded.
+description: AutoCAD .NET (ObjectARX managed API) plugin fundamentals as they apply inside Plant 3D 2024 (.NET Framework 4.8) and 2025+ (.NET 8/10) — CommandMethod/CommandFlags, transactions, document locking, SelectionFilter/SelectAll, Editor output, IExtensionApplication, NETLOAD and debugging. Use when adding or changing commands, touching transactions or selections, or changing how the plugin is loaded.
 ---
 
-# AutoCAD .NET plugin basics (AutoCAD 2024 / Plant 3D 2024)
+# AutoCAD .NET plugin basics (inside Plant 3D)
 
-## Target
-- .NET Framework **4.8**, x64, C# 7.3 in an old-style csproj. (AutoCAD 2025+ moved to .NET 8.
-  Porting to it is a separate project.)
-- Reference `AcCoreMgd`, `AcDbMgd` and `AcMgd` with `Private=False`, and never copy them locally.
+For the target frameworks, the project file and deployment across versions, see `plant3d-multi-version`.
+Reference DLLs: `AcCoreMgd` (Application, Document, Editor, CommandMethod), `AcDbMgd` (Database, Transaction, entities)
+and `AcMgd` (UI). Always reference them with `Private=False`.
 
 ## Commands
 ```csharp
-[CommandMethod("MYCMD")]                         // runs in document context; doc is auto-locked
-[CommandMethod("MYCMD", CommandFlags.Modal)]     // default
-[CommandMethod("MYCMD", CommandFlags.Session)]   // application context → you MUST LockDocument()
+[CommandMethod("MYCMD")]                         // Modal (default): runs in document context, doc auto-locked
 [CommandMethod("MYCMD", CommandFlags.UsePickSet)]// honour pre-selection (Editor.SelectImplied)
+[CommandMethod("MYCMD", CommandFlags.Session)]   // application context → you MUST LockDocument()
 ```
-- The class holding commands may be static or instance. Instance classes get one object per document.
+- A command method can be static or an instance method. For instance methods, AutoCAD creates one object per document.
 - Get the context **inside** the command:
 ```csharp
 Document doc = Application.DocumentManager.MdiActiveDocument;
 Database db = doc.Database; Editor ed = doc.Editor;
 ```
+- Plant 3D commands need a current project. Check `PlantApplication.CurrentProject != null` and end with
+  a message rather than an exception.
 
 ## Transactions
 ```csharp
 using (Transaction tr = db.TransactionManager.StartTransaction())
 {
-    var ent = (Entity)tr.GetObject(id, OpenMode.ForRead);
-    // ent.UpgradeOpen(); to write
-    tr.Commit();   // without Commit everything is aborted
+    var part = tr.GetObject(id, OpenMode.ForRead) as Part;   // 'as' + null check for mixed selections
+    // part.UpgradeOpen(); to modify the entity
+    tr.Commit();   // without Commit, entity changes are rolled back
 }
 ```
-- Opening objects ForRead is cheap. Open for write only the objects you actually change.
-- Do not keep DBObjects after the transaction ends.
+- Plant **property** writes (`DataLinksManager.SetProperties`) go to the project database, not to the DWG transaction.
+  Rolling back the transaction does not undo them.
+- Don't keep DBObjects after their transaction ends. Keep ObjectIds, row IDs or plain data instead.
 
 ## Document locking
-Only needed in session context (modeless UI, `CommandFlags.Session`, events):
+You only need it in session context (modeless UI, `CommandFlags.Session`, events):
 ```csharp
 using (DocumentLock _ = doc.LockDocument()) { /* work */ }
 ```
-Watch for the bug `using (...) ;`: the lock is released straight away.
+Watch for the bug `using (...) ;`. The stray `;` releases the lock immediately, and the compiler warns with CS0642.
 
 ## Selection
 ```csharp
 var filter = new SelectionFilter(new[] {
     new TypedValue((int)DxfCode.Start, "ACPPCONNECTOR"),
 });
-PromptSelectionResult r = ed.SelectAll(filter);            // whole drawing, no user input
+PromptSelectionResult r = ed.SelectAll(filter);                                   // whole drawing
 PromptSelectionResult r2 = ed.GetSelection(new PromptSelectionOptions(), filter); // user picks
-if (r.Status != PromptStatus.OK) return;
+if (r.Status != PromptStatus.OK) return;                                          // Error = nothing found
 ```
-To let the user pick, or work on the pre-selection, use `GetSelection` or `SelectImplied` instead of `SelectAll`.
+Use `GetSelection` or `SelectImplied` instead of `SelectAll` to let the user work on a subset.
 
-## Messaging & UX
-- Use `ed.WriteMessage("\n...")` for command-line output. Do not open a `MessageBox` inside loops.
-- Report a summary at the end, e.g. "123 welds updated, 4 skipped".
-- Wrap the command body in try/catch and report errors through `ed.WriteMessage`. An unhandled exception
-  can crash AutoCAD.
+## Messaging and UX
+- Write to the command line with `ed.WriteMessage("\n...")`. Never open a `MessageBox` inside a loop.
+- End with a summary, e.g. "123 welds updated, 4 skipped (unconnected)".
+- Wrap each command body in try/catch (`System.Exception`, not `Autodesk.AutoCAD.Runtime.Exception` only) and
+  report errors with `ed.WriteMessage`. An unhandled exception in a command can take AutoCAD down.
 
-## Loading
-- Development: use the `NETLOAD` command and pick the DLL. You cannot unload it; restart AutoCAD to reload.
-- Debugging: set the Start program to `acad.exe` with `/product PLNT3D /language "en-US"`.
-- Deployment: an autoloader bundle (`%AppData%\Autodesk\ApplicationPlugins\X.bundle\PackageContents.xml`)
-  or registry demand-loading.
-- `IExtensionApplication.Initialize()` runs when the DLL loads. Keep it light, because no document or project may be open yet.
+## Loading and debugging
+- Development: run `NETLOAD` and pick the DLL. A loaded DLL cannot be unloaded, so restart Plant 3D to reload it.
+- Visual Studio debugging: set the start program to `acad.exe` with the arguments `/product PLNT3D /language "en-US"` (see `.csproj.user`).
+- Deployment: an autoloader `.bundle` (see `plant3d-multi-version`).
+- `IExtensionApplication.Initialize()` runs when the DLL loads. Keep it light, because there may be no document or project yet.
 
 ## Culture
-Windows locales differ (for example Czech, Polish, Ukrainian and German use `,` as the decimal separator). Always
-`double.Parse(s, NumberStyles.Float, CultureInfo.InvariantCulture)` or `double.TryParse` with the same arguments.
+Number parsing has to work on any Windows locale (many use `,` as the decimal separator):
+`double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out var v)`.
+Plant stores numeric properties as strings. Check the actual format on a real project before you rely on it.

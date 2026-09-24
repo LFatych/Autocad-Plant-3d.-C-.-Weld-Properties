@@ -1,40 +1,45 @@
 ---
 name: plant3d-change-review
-description: Checklist to run before committing any change to this Plant 3D plugin, since the code cannot be compiled or run in Claude's Linux environment. Use before every commit, when reviewing a diff, or when the user asks "is this ready?".
+description: Checklist to run before committing any change to this Plant 3D plugin — compile check against the 2024 and 2026 SDKs, API/runtime/behaviour review, and the hand-off test plan for the user (who runs Plant 3D on Windows). Use before every commit, when reviewing a diff, or when the user asks "is this ready?".
 ---
 
 # Pre-commit review for WeldPropUtils
 
-This project cannot be built here, because there are no Autodesk DLLs and no .NET Framework. Review by hand
-instead. Go through every point below, and fix problems before you commit.
+Claude can compile but cannot run the plugin. Compile it, review it, then give the user a test plan.
 
-## 1. Compiles in principle
-- [ ] Every type or member you used already appears in the repo, in the `plant3d-api` skill, or in the SDK.
-      If you are unsure, say so in the summary. Do not guess.
-- [ ] Only C# 7.3 syntax: no `using var`, no switch expressions, no `??=`, no `^1` or `..`, no records.
-- [ ] Each new `.cs` file has a `<Compile Include=...>` line in `WeldPropUtils.csproj` (old-style csproj!).
-- [ ] Each new Autodesk reference uses an `$(AP3D_SDK_2024)` HintPath and `<Private>False</Private>`.
-- [ ] `using` directives and aliases (`pPart`, `pPort`, `portCol`) resolve without ambiguity.
+## 1. Compiles (mandatory)
+- [ ] Run the `plant3d-build-check` skill. Both `net48` and `net8.0-windows` must build with no errors and no new warnings.
+- [ ] Each new `.cs` file has a `<Compile Include=...>` line in the real `WeldPropUtils.csproj`, as long as it stays old-style.
+- [ ] Each new Autodesk reference is added to the real csproj **and** to `tools/compile-check/CompileCheck.csproj`.
 
-## 2. Runtime correctness
-- [ ] Document, Database, Editor and DataLinksManager are fetched when the command runs.
-- [ ] Transactions are committed. No DBObject is used after its transaction ends.
-- [ ] Null checks exist for `as` casts, `FindAcPpRowId` results (≤ 0) and missing dictionary keys.
-- [ ] Numbers are parsed with `CultureInfo.InvariantCulture`.
-- [ ] No `MessageBox` inside loops. Errors go to `ed.WriteMessage`.
-- [ ] Every write goes through `dlm.SetProperties`, unless there is a reason to write rows directly.
+## 2. Runtime correctness (not caught by the compiler)
+- [ ] Document, Database, Editor and DataLinksManager are fetched when the command runs, never cached in static fields.
+- [ ] `FindAcPpRowId` is guarded, because it **throws** `DLException` when there is no link (use `HasLinks` or try/catch).
+- [ ] Sub-part rows are found by the real sub-index (`SelectObjectSubIds`, `Pair.PpObjectId.SubIndex`), not a hard-coded `1`.
+- [ ] `as` casts and dictionary lookups are null-checked. A missing property doesn't crash the whole run.
+- [ ] Numbers are parsed with `CultureInfo.InvariantCulture`. Sizes are compared numerically, not as strings.
+- [ ] No `MessageBox` inside loops. Errors are collected and reported once with `ed.WriteMessage`.
+- [ ] Writes go through `dlm.SetProperties`, unless there's a reason not to (write the reason in a comment).
+- [ ] The code works on both runtimes (see `plant3d-multi-version`: no .NET Framework-only APIs).
 
 ## 3. Behaviour
-- [ ] Existing commands keep their names and outputs unless the user asked to change them.
+- [ ] Existing command names and outputs are unchanged unless the user asked for a change.
 - [ ] Any new custom property that must exist in Project Setup is listed in the summary and in `CLAUDE.md`.
 
 ## 4. Hand-off to the user
 In the final message, include:
-1. What changed and why (short).
-2. **Build**: "Build the Release configuration in Visual Studio, then NETLOAD `bin\Release\WeldPropUtils.dll`."
-3. **Manual test plan**: which kind of drawing to open (butt weld, tap, socket weld, weld to an equipment nozzle,
-   weld with only one side connected), which command to run, and which property values to check in the Properties
-   palette or Data Manager.
-4. Any API assumption that still needs checking against the SDK.
+1. What changed and why, briefly.
+2. The compile-check result for each target.
+3. **Build**: "Build in Visual Studio (Release), then NETLOAD `bin\Release\WeldPropUtils.dll` in Plant 3D <version>."
+4. **Manual test plan**: which drawing to use and which cases to cover:
+   - butt weld pipe–elbow
+   - tap
+   - socket weld
+   - reducer (different OD on each side)
+   - weld to an equipment nozzle, on equipment with **several** nozzles
+   - weld with only one side connected
 
-Update `CLAUDE.md` (Known issues) and the `plant3d-api` skill when you learn or confirm something new.
+   Also say which command to run and which values to check in the Properties palette or Data Manager.
+5. Any API assumption that still needs a runtime check (see the notes in `plant3d-api`).
+
+Update `CLAUDE.md` (Known issues) and the `plant3d-api` skill whenever you learn or confirm something new.

@@ -1,0 +1,58 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Compile-only check of WeldPropUtils against the real Plant 3D SDK reference DLLs,
+    for every supported Plant 3D version. Used by Claude on Linux; it produces no plugin.
+    PLANT_REF_2024 / PLANT_REF_2026 must point to folders holding AcCoreMgd, AcDbMgd, AcMgd
+    and the PnP*.dll files of that SDK (see .claude/skills/plant3d-build-check).
+  -->
+  <PropertyGroup>
+    <TargetFrameworks>net48;net8.0-windows</TargetFrameworks>
+    <OutputType>Library</OutputType>
+    <AssemblyName>WeldPropUtils.CompileCheck</AssemblyName>
+    <RootNamespace>WeldPropUtils</RootNamespace>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <PlatformTarget>x64</PlatformTarget>
+    <!-- MSB327x: Autodesk mixed-mode DLLs; NU1505/CA1416: artifacts of building net8.0-windows on Linux -->
+    <NoWarn>$(NoWarn);MSB3270;MSB3277;NU1505;CA1416</NoWarn>
+    <SrcDir>$(MSBuildThisFileDirectory)..\..\WeldPropUtils\WeldPropUtils\</SrcDir>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net48'">
+    <LangVersion>7.3</LangVersion>
+    <RefDir>$(PLANT_REF_2024)</RefDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net8.0-windows'">
+    <RefDir>$(PLANT_REF_2026)</RefDir>
+    <!-- Linux dotnet has no WindowsDesktop SDK, so reference the WinForms/WPF ref pack from NuGet directly -->
+    <WinDesktopRef>$(NuGetPackageRoot)microsoft.windowsdesktop.app.ref/8.0.0/ref/net8.0/</WinDesktopRef>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="$(SrcDir)**\*.cs" Exclude="$(SrcDir)obj\**;$(SrcDir)bin\**" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'net48'">
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+    <Reference Include="System.Windows.Forms" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'net8.0-windows'">
+    <PackageDownload Include="Microsoft.WindowsDesktop.App.Ref" Version="[8.0.0]" />
+    <Reference Include="$(WinDesktopRef)*.dll" Private="False" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="AcCoreMgd"><HintPath>$(RefDir)\AcCoreMgd.dll</HintPath><Private>False</Private></Reference>
+    <Reference Include="AcDbMgd"><HintPath>$(RefDir)\AcDbMgd.dll</HintPath><Private>False</Private></Reference>
+    <Reference Include="AcMgd"><HintPath>$(RefDir)\AcMgd.dll</HintPath><Private>False</Private></Reference>
+    <Reference Include="PnP3dObjectsMgd"><HintPath>$(RefDir)\PnP3dObjectsMgd.dll</HintPath><Private>False</Private></Reference>
+    <Reference Include="PnP3dProjectPartsMgd"><HintPath>$(RefDir)\PnP3dProjectPartsMgd.dll</HintPath><Private>False</Private></Reference>
+    <Reference Include="PnPDataLinks"><HintPath>$(RefDir)\PnPDataLinks.dll</HintPath><Private>False</Private></Reference>
+    <Reference Include="PnPDataObjects"><HintPath>$(RefDir)\PnPDataObjects.dll</HintPath><Private>False</Private></Reference>
+    <Reference Include="PnPProjectManagerMgd"><HintPath>$(RefDir)\PnPProjectManagerMgd.dll</HintPath><Private>False</Private></Reference>
+    <Reference Include="PnPCommonMgd"><HintPath>$(RefDir)\PnPCommonMgd.dll</HintPath><Private>False</Private></Reference>
+  </ItemGroup>
+</Project>
