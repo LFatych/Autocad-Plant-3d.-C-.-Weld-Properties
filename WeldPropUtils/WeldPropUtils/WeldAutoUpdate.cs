@@ -1,17 +1,22 @@
 using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
+using Autodesk.AutoCAD.EditorInput;
 using Autodesk.ProcessPower.PlantInstance;
 using Autodesk.ProcessPower.PnP3dObjects;
 using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
+using System.Globalization;
 using System.IO;
 using System.Linq;
+using WeldPropUtils.Schema;
 using WeldPropUtils.Settings;
 using AcApp = Autodesk.AutoCAD.ApplicationServices.Application;
 
 namespace WeldPropUtils
 {
-    // Fills the mapped properties of new welds automatically when the project settings have "autoUpdate": true.
+    // Handles new welds automatically, per the project settings: "autoUpdate" fills their mapped properties,
+    // "numbering.auto" gives them a weld number (WeldNumberIndex: the number of their group, or the next free one).
     // Kept cheap on purpose:
     //  - Database.ObjectAppended only remembers the ObjectId of a new Connector (a type check, no database work);
     //  - when the command that created them ends, one Idle handler is attached; on the first Idle where AutoCAD is
@@ -32,10 +37,13 @@ namespace WeldPropUtils
         private static bool _idleAttached;
         private static bool _busy;
 
-        // "autoUpdate" of the last settings file read, reused until the file changes.
+        // Numbers already used per drawing, built on the first auto-numbering in that drawing.
+        private static readonly Dictionary<Database, WeldNumberIndex> NumberIndexes = new Dictionary<Database, WeldNumberIndex>();
+
+        // The last settings file read, reused until the file changes.
         private static string _cachedPath;
         private static DateTime _cachedWriteTime;
-        private static bool _cachedEnabled;
+        private static WeldPropSettings _cachedSettings;
 
         public static void Start()
         {
@@ -64,6 +72,13 @@ namespace WeldPropUtils
             doc.CommandCancelled -= OnCommandFinished;
             doc.CommandFailed -= OnCommandFinished;
             Pending.Remove(doc.Database);
+            NumberIndexes.Remove(doc.Database);
+        }
+
+        // After a full renumbering (SetWeldNumber) the index is replaced by its result.
+        public static void SetNumberIndex(Database db, WeldNumberIndex index)
+        {
+            if (db != null) NumberIndexes[db] = index;
         }
 
         // Runs for every object appended to a drawing: must stay trivial.
@@ -134,37 +149,82 @@ namespace WeldPropUtils
         {
             if (PlantApplication.CurrentProject == null) return;
             string path = SettingsStore.GetSettingsPath();
-            if (path == null || !IsEnabled(path)) return;
+            WeldPropSettings settings = path == null ? null : LoadCached(path);
+            if (settings == null) return;
+            bool fill = settings.AutoUpdate;
+            bool number = settings.Numbering.Auto;
+            if (!fill && !number) return;
 
             ids = ids.Where(id => id.IsValid && !id.IsErased).ToArray();
             if (ids.Length == 0) return;
             if (ids.Length > MaxWeldsPerRun)
             {
-                doc.Editor.WriteMessage("\n" + ids.Length + " new connectors: run SetWeldProp to fill the weld properties "
-                    + "(auto-update handles up to " + MaxWeldsPerRun + " at once).\n");
+                doc.Editor.WriteMessage("\n" + ids.Length + " new connectors: run SetWeldProp / SetWeldNumber to update them "
+                    + "(automatic updates handle up to " + MaxWeldsPerRun + " at once).\n");
                 return;
             }
 
-            WeldPropSettings settings = SettingsStore.Load(path, out string message);
-            if (message != null) doc.Editor.WriteMessage("\n" + message);
-            MappingProfile profile = WeldPropertiesHandler.WritableProfile(settings.GetActiveProfile());
-            if (profile.Mappings.Count == 0) return;
+            List<string> weldProps = ProjectSchema.ReadWeldProperties(Acad.dlm);
+            if (number && weldProps.Count > 0 && !weldProps.Contains(WeldNumbering.WeldNumberProperty))
+            {
+                doc.Editor.WriteMessage("\nAutomatic weld numbering skipped: the weld classes have no WeldNumber property.\n");
+                number = false;
+            }
 
-            int count = WeldPropertiesHandler.ProcessWelds(ids, (connector, weld) => WeldPropertiesHandler.SetWeldProp(connector, weld, profile));
-            if (count > 0) doc.Editor.WriteMessage("\nWeld properties filled for " + count + " new weld(s).\n");
+            MappingProfile profile = fill ? WeldPropertiesHandler.WritableProfile(settings.GetActiveProfile()) : null;
+            WeldNumberIndex index = number ? GetNumberIndex(doc) : null;
+            int numbered = 0;
+            int count = WeldPropertiesHandler.ProcessWelds(ids,
+                profile == null || profile.Mappings.Count == 0 ? null : (connector, weld) => WeldPropertiesHandler.SetWeldProp(connector, weld, profile),
+                index == null ? null : welds =>
+                {
+                    foreach (Weld weld in welds)
+                    {
+                        int? weldNumber = index.NumberFor(weld, settings.Numbering);
+                        if (weldNumber == null) continue;
+                        WeldNumbering.Write(weld, weldNumber.Value.ToString(CultureInfo.InvariantCulture));
+                        numbered++;
+                    }
+                });
+            if (count == 0) return;
+            var done = new List<string>();
+            if (fill) done.Add("properties filled");
+            if (numbered > 0) done.Add(numbered + " numbered");
+            doc.Editor.WriteMessage("\nNew welds: " + count + " (" + string.Join(", ", done) + ").\n");
         }
 
-        // Reads "autoUpdate" only when the settings file changed; a missing file means off (no file is created here).
-        private static bool IsEnabled(string path)
+        // Existing weld numbers of the drawing, read once (all welds) and then kept up to date as new welds are numbered.
+        private static WeldNumberIndex GetNumberIndex(Document doc)
         {
-            if (!File.Exists(path)) return false;
+            if (NumberIndexes.TryGetValue(doc.Database, out WeldNumberIndex index)) return index;
+            var existing = new List<Weld>();
+            var names = new StringCollection { WeldNumbering.WeldNumberProperty };
+            PromptSelectionResult all = doc.Editor.SelectAll(new SelectionFilter(new[] { new TypedValue((int)DxfCode.Start, "ACPPCONNECTOR") }));
+            if (all.Status == PromptStatus.OK)
+            {
+                WeldPropertiesHandler.ProcessWelds(all.Value.GetObjectIds(), (connector, weld) =>
+                {
+                    StringCollection values = Acad.dlm.GetProperties(weld.WeldId, names, true);
+                    weld.WeldNumber = values != null && values.Count > 0 ? values[0] : null;
+                }, welds => existing = welds);
+            }
+            index = new WeldNumberIndex(existing);
+            NumberIndexes[doc.Database] = index;
+            return index;
+        }
+
+        // Settings are read only when the file changed; a missing or unreadable file means "no automatic updates"
+        // (no file is created here).
+        private static WeldPropSettings LoadCached(string path)
+        {
+            if (!File.Exists(path)) return null;
             DateTime writeTime = File.GetLastWriteTimeUtc(path);
-            if (path == _cachedPath && writeTime == _cachedWriteTime) return _cachedEnabled;
+            if (path == _cachedPath && writeTime == _cachedWriteTime) return _cachedSettings;
             WeldPropSettings settings = SettingsStore.Load(path, out string message);
             _cachedPath = path;
             _cachedWriteTime = writeTime;
-            _cachedEnabled = message == null && settings.AutoUpdate;
-            return _cachedEnabled;
+            _cachedSettings = message == null ? settings : null;
+            return _cachedSettings;
         }
     }
 }

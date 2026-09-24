@@ -49,13 +49,13 @@ namespace WeldPropUtils
         //we need to have larger port ever first
         private int ComparePorts(structPort port1, structPort port2)
         {
-            int odComparison = string.Compare(port1.OD, port2.OD);
-
+            // Sizes as numbers ("114.3" > "60.3"), independent of the Windows locale.
+            int odComparison = WeldNumbering.ParseSize(port1.OD).CompareTo(WeldNumbering.ParseSize(port2.OD));
             if (odComparison != 0) return odComparison;
-            int wallThicknessComparison = string.Compare(port1.WallThickness, port2.WallThickness);
+            int wallThicknessComparison = WeldNumbering.ParseSize(port1.WallThickness).CompareTo(WeldNumbering.ParseSize(port2.WallThickness));
             if (wallThicknessComparison != 0) return wallThicknessComparison;
 
-            return string.Compare(port1.Material, port2.Material);
+            return string.CompareOrdinal(port1.Material, port2.Material);
         }
 
         public void NormalizePorts()

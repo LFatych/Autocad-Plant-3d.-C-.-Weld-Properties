@@ -162,7 +162,7 @@ namespace WeldPropUtils
             var viewModel = new MappingViewModel(settings, sources, weldTargets, PlantApplication.CurrentProject.Name);
             var window = new MappingWindow(viewModel, dark, prefs);
             AcApp.ShowModalWindow(window);
-            if (!window.Saved) return;
+            if (window.Result == MappingWindowResult.Cancel) return;
 
             try
             {
@@ -175,11 +175,15 @@ namespace WeldPropUtils
                 return;
             }
 
-            if (window.UpdateWeldsRequested)
+            if (window.Result == MappingWindowResult.SaveAndUpdate)
             {
                 MappingProfile profile = WritableProfile(settings.GetActiveProfile());
                 LoopThroughWelds((connector, weld) => { SetWeldProp(connector, weld, profile); });
                 Acad.ed.WriteMessage("\nWeld properties updated with profile \"" + profile.Name + "\".");
+            }
+            else if (window.Result == MappingWindowResult.SaveAndNumber)
+            {
+                NumberAllWelds(settings);
             }
         }
 
@@ -232,21 +236,22 @@ namespace WeldPropUtils
         {
             WeldPropSettings settings = LoadSettings();
             if (settings == null) return;
-            MappingProfile profile = WritableProfile(settings.GetActiveProfile());
-            int bw = settings.Numbering.ButtweldStart;
-            int tw = settings.Numbering.TapStart;
-            int sw = settings.Numbering.SocketweldStart;
+            NumberAllWelds(settings);
+        }
 
+        // Fills the mapped properties of all welds, then renumbers them all (WeldNumbering.NumberAll).
+        private static void NumberAllWelds(WeldPropSettings settings)
+        {
+            MappingProfile profile = WritableProfile(settings.GetActiveProfile());
+            List<Weld> numbered = null;
             LoopThroughWelds((connector, weld) => { SetWeldProp(connector, weld, profile); }, (weldList) =>
             {
-                List<Weld> buttWelds = weldList.Where(w => w.WeldType == "Buttweld").ToList();
-                List<Weld> tapWelds = weldList.Where(w => w.WeldType == "Tap").ToList();
-                List<Weld> socketWelds = weldList.Where(w => w.WeldType == "Socketweld").ToList();
-
-                buttWelds?.SetNum(bw);
-                tapWelds?.SetNum(tw);
-                socketWelds?.SetNum(sw);
+                WeldNumbering.NumberAll(weldList, settings.Numbering);
+                numbered = weldList;
             });
+            if (numbered == null) return;
+            WeldAutoUpdate.SetNumberIndex(Acad.db, new WeldNumberIndex(numbered));
+            Acad.ed.WriteMessage("\n" + numbered.Count + " weld(s) numbered.");
         }
     }
 }

@@ -201,6 +201,22 @@ namespace WeldPropUtils.Settings
         [DataMember(Name = "socketweldStart", Order = 2)]
         public int SocketweldStart { get; set; }
 
+        // New welds get a number automatically (WeldAutoUpdate): the number of their group, or the next free one.
+        [DataMember(Name = "auto", Order = 3)]
+        public bool Auto { get; set; }
+
+        // Start number for a weld JointType (Buttweld/Tap/Socketweld); null for other types.
+        public int? StartFor(string weldType)
+        {
+            switch (weldType)
+            {
+                case "Buttweld": return ButtweldStart;
+                case "Tap": return TapStart;
+                case "Socketweld": return SocketweldStart;
+                default: return null;
+            }
+        }
+
         public static NumberingSettings CreateDefault()
         {
             return new NumberingSettings { ButtweldStart = 11, TapStart = 51, SocketweldStart = 71 };

@@ -28,8 +28,7 @@ namespace WeldPropUtils.UI
         private string _noteText;
         private bool _hasMissing;
 
-        // (saved, updateWelds)
-        public event Action<bool, bool> CloseRequested;
+        public event Action<MappingWindowResult> CloseRequested;
 
         // weldProperties: all properties of the weld classes in Project Setup (empty when they could not be read).
         public MappingViewModel(WeldPropSettings settings, List<SourceProperty> sources, List<string> weldProperties, string projectName)
@@ -47,9 +46,10 @@ namespace WeldPropUtils.UI
             ResetCommand = new RelayCommand(() => { _profile.Mappings = MappingProfile.CreateDefault().Mappings; _emptyRows.Clear(); RefreshMapping(); });
             ClearAllCommand = new RelayCommand(ClearAll);
             RemoveMissingCommand = new RelayCommand(RemoveMissing);
-            SaveCommand = new RelayCommand(() => CloseRequested?.Invoke(true, false));
-            SaveAndUpdateCommand = new RelayCommand(() => CloseRequested?.Invoke(true, true));
-            CancelCommand = new RelayCommand(() => CloseRequested?.Invoke(false, false));
+            SaveCommand = new RelayCommand(() => CloseRequested?.Invoke(MappingWindowResult.Save));
+            SaveAndUpdateCommand = new RelayCommand(() => CloseRequested?.Invoke(MappingWindowResult.SaveAndUpdate));
+            SaveAndNumberCommand = new RelayCommand(() => CloseRequested?.Invoke(MappingWindowResult.SaveAndNumber));
+            CancelCommand = new RelayCommand(() => CloseRequested?.Invoke(MappingWindowResult.Cancel));
 
             RefreshAll();
         }
@@ -105,6 +105,32 @@ namespace WeldPropUtils.UI
             set { _settings.AutoUpdate = value; OnPropertyChanged(); }
         }
 
+        // Project setting "numbering.auto": new welds get the number of their group, or the next free one.
+        public bool AutoNumber
+        {
+            get => _settings.Numbering.Auto;
+            set { _settings.Numbering.Auto = value; OnPropertyChanged(); }
+        }
+
+        // Start numbers of the weld types (TextBoxes; WPF rejects non-numbers before they reach the setter).
+        public int ButtweldStart
+        {
+            get => _settings.Numbering.ButtweldStart;
+            set { _settings.Numbering.ButtweldStart = Math.Max(0, value); OnPropertyChanged(); }
+        }
+
+        public int TapStart
+        {
+            get => _settings.Numbering.TapStart;
+            set { _settings.Numbering.TapStart = Math.Max(0, value); OnPropertyChanged(); }
+        }
+
+        public int SocketweldStart
+        {
+            get => _settings.Numbering.SocketweldStart;
+            set { _settings.Numbering.SocketweldStart = Math.Max(0, value); OnPropertyChanged(); }
+        }
+
         // Some rows name a weld property that the weld classes in Project Setup don't have.
         public bool HasMissing
         {
@@ -131,6 +157,7 @@ namespace WeldPropUtils.UI
         public ICommand RemoveMissingCommand { get; }
         public ICommand SaveCommand { get; }
         public ICommand SaveAndUpdateCommand { get; }
+        public ICommand SaveAndNumberCommand { get; }
         public ICommand CancelCommand { get; }
 
         // ---------- refresh ----------
@@ -358,6 +385,15 @@ namespace WeldPropUtils.UI
             _emptyRows.Clear();
             RefreshAll();
         }
+    }
+
+    // How the mapping window was closed. Every result except Cancel saves the settings first.
+    public enum MappingWindowResult
+    {
+        Cancel,
+        Save,
+        SaveAndUpdate,   // then fill the mapped properties of all welds
+        SaveAndNumber    // then fill the properties and renumber all welds (SetWeldNumber)
     }
 
     // A pill button (class tab or profile): label, active state, click action.

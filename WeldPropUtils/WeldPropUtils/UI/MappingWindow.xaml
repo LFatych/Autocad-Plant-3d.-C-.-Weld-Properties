@@ -193,8 +193,41 @@
                     <ContentControl Content="{Binding Side1}" ContentTemplate="{StaticResource SideCardTemplate}" Focusable="False" />
                     <ContentControl Content="{Binding Side2}" ContentTemplate="{StaticResource SideCardTemplate}" Focusable="False" />
 
-                    <TextBlock Text="WeldNumber is set by the numbering rules (SetWeldNumber), not mapped here."
-                               Style="{StaticResource Spds.Text.Muted}" />
+                    <!-- Automation & numbering: all switches of the plugin (project settings, saved with Save). -->
+                    <Border Style="{StaticResource Spds.Card}">
+                        <StackPanel>
+                            <TextBlock Text="Automation &amp; numbering" Style="{StaticResource Spds.Text.Heading}" Margin="0,0,0,10" />
+                            <CheckBox Content="Fill properties of new welds automatically" IsChecked="{Binding AutoUpdate}"
+                                      Style="{StaticResource Spds.CheckBox}" Margin="0,0,0,4"
+                                      ToolTip="When a command creates welds (routing, placing fittings, copy…), fill their mapped properties once the command ends. Same as WeldPropAuto." />
+                            <CheckBox Content="Number new welds automatically" IsChecked="{Binding AutoNumber}"
+                                      Style="{StaticResource Spds.CheckBox}" Margin="0,0,0,4"
+                                      ToolTip="A new weld gets the number of the welds with the same sizes and materials, or the next free number. Existing numbers are not changed." />
+                            <TextBlock Style="{StaticResource Spds.Text.Muted}" Margin="0,0,0,12"
+                                       Text="Both run only when a command has created welds, for those welds only. &quot;Save and number all welds&quot; renumbers the whole drawing, sorted by size." />
+
+                            <TextBlock Text="First weld number" Style="{StaticResource Spds.Text.Muted}" Margin="0,0,0,6" />
+                            <WrapPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,20,6">
+                                    <TextBlock Text="Butt weld" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                    <TextBox Text="{Binding ButtweldStart}" Width="64" Style="{StaticResource Spds.TextBox}"
+                                             AutomationProperties.Name="First butt weld number" />
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,20,6">
+                                    <TextBlock Text="Tap" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                    <TextBox Text="{Binding TapStart}" Width="64" Style="{StaticResource Spds.TextBox}"
+                                             AutomationProperties.Name="First tap weld number" />
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                    <TextBlock Text="Socket weld" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                    <TextBox Text="{Binding SocketweldStart}" Width="64" Style="{StaticResource Spds.TextBox}"
+                                             AutomationProperties.Name="First socket weld number" />
+                                </StackPanel>
+                            </WrapPanel>
+                            <TextBlock Text="Weld numbers are written to the weld property WeldNumber (add it to the weld classes in Project Setup)."
+                                       Style="{StaticResource Spds.Text.Faint}" Margin="0,4,0,0" />
+                        </StackPanel>
+                    </Border>
                 </StackPanel>
             </ScrollViewer>
 
@@ -262,13 +295,13 @@
             <DockPanel>
                 <Button DockPanel.Dock="Right" Content="Save and update all welds" Command="{Binding SaveAndUpdateCommand}"
                         Style="{StaticResource Spds.Button.Primary}" Margin="8,0,0,0" />
+                <Button DockPanel.Dock="Right" Content="Save and number all welds" Command="{Binding SaveAndNumberCommand}"
+                        Style="{StaticResource Spds.Button.Chrome}" Margin="8,0,0,0"
+                        ToolTip="Save, fill the properties of all welds and renumber them all (SetWeldNumber)" />
                 <Button DockPanel.Dock="Right" Content="Save" Command="{Binding SaveCommand}"
                         Style="{StaticResource Spds.Button.Chrome}" Margin="8,0,0,0" />
                 <Button DockPanel.Dock="Right" Content="Cancel" Command="{Binding CancelCommand}" IsCancel="True"
                         Style="{StaticResource Spds.Button.Chrome}" />
-                <CheckBox DockPanel.Dock="Left" Content="Update new welds automatically" IsChecked="{Binding AutoUpdate}"
-                          Foreground="{DynamicResource Spds.ChromeText}" VerticalAlignment="Center" Margin="0,0,20,0"
-                          ToolTip="When a command creates welds (routing, placing fittings…), fill their mapped properties once the command ends. Project setting; also WeldPropAuto." />
                 <TextBlock Text="{Binding HintText}" FontSize="12" VerticalAlignment="Center"
                            Foreground="{DynamicResource Spds.ChromeMuted}" TextTrimming="CharacterEllipsis" />
             </DockPanel>

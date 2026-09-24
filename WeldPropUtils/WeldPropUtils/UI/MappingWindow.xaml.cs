@@ -18,16 +18,15 @@ namespace WeldPropUtils.UI
             _prefs = prefs;
             DataContext = viewModel;
             ApplyTheme(dark);
-            viewModel.CloseRequested += (saved, update) =>
+            viewModel.CloseRequested += result =>
             {
-                Saved = saved;
-                UpdateWeldsRequested = update;
+                Result = result;
                 Close();
             };
         }
 
-        public bool Saved { get; private set; }
-        public bool UpdateWeldsRequested { get; private set; }
+        // Cancel also when the window is closed with the title bar button.
+        public MappingWindowResult Result { get; private set; } = MappingWindowResult.Cancel;
 
         // The theme dictionary is MergedDictionaries[0] (see MappingWindow.xaml).
         private void ApplyTheme(bool dark)

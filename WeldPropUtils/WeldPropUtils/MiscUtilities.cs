@@ -54,13 +54,6 @@ namespace WeldPropUtils
                 || jointType == "Socketweld");
         }
 
-        public static bool ArePortsEqual(structPort port1, structPort port2)
-        {
-            return port1.OD == port2.OD &&
-                port1.WallThickness == port2.WallThickness &&
-                port1.Material == port2.Material;
-        }
-
         public static Weld AsWeld(this Connector conn, Transaction tr)
         {
             ConnectionManager connMgr = new ConnectionManager();
@@ -158,37 +151,6 @@ namespace WeldPropUtils
                     return Acad.dlm.FindAcPpRowId(Acad.dlm.MakeAcPpObjectId(conn.ObjectId, 1));
             }
             return 0;
-        }
-
-        public static void SetNum(this List<Weld> welds, int weldNum)
-        {
-            var sortedWeld = welds.OrderByDescending(w => Convert.ToDouble(w.Port1.OD))
-                .ThenByDescending(w => Convert.ToDouble(w.Port1.WallThickness))
-                .ThenByDescending(w => w.Port1.Material)
-                .ThenByDescending(w => Convert.ToDouble(w.Port2.OD))
-                .ThenByDescending(w => Convert.ToDouble(w.Port2.WallThickness))
-                .ThenByDescending(w => w.Port2.Material);
-            //monitor when sorted welds change their properties
-            Weld tempWeld = sortedWeld.FirstOrDefault();
-            foreach (Weld weld in sortedWeld)
-            {
-                PnPRow partRow = Acad.dlm.GetPnPDatabase().GetRow(weld.WeldId);
-                if (!ArePortsEqual(tempWeld.Port1, weld.Port1) || !ArePortsEqual(tempWeld.Port2, weld.Port2))
-                {
-                    tempWeld = weld;
-                    weldNum++;
-                    weld.WeldNumber = weldNum.ToString();
-
-                }
-                else
-                {
-                    weld.WeldNumber = weldNum.ToString();
-                }
-                partRow.BeginEdit();
-                partRow["WeldNumber"] = weld.WeldNumber;
-                partRow.EndEdit();
-            }
-
         }
     }
 }
